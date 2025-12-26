@@ -1,0 +1,8 @@
+{
+  "name": "mirrwiki",
+  "version": "1.0.0",
+  "dependencies": {
+    "firebase": "^10.0.0",
+    "xhr2": "^0.2.1"
+  }
+}
