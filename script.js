@@ -230,7 +230,9 @@ window.openGraphModal = async () => {
         });
 
     // 물리 엔진 튜닝 (옵시디언 느낌)
-    Graph.d3Force('charge').strength(-150);
+    Graph.d3Force('charge').strength(-20);
+    Graph.d3Force('link').distance(35).strength(0.8);
+    Graph.d3Force('collide', d3.forceCollide(12));
     Graph.d3Force('center').x(0).y(0);
 };
 
