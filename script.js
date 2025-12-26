@@ -2,7 +2,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebas
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
 import { getFirestore, collection, doc, getDocs, getDoc, setDoc, addDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 
-// --- Firebase Configuration ---
+// --- Firebase 설정 (반드시 친구의 설정값과 일치해야 함) ---
 const firebaseConfig = {
     apiKey: "AIzaSyDoxGleFDo1xt_f9QE8XhmdIBL65XTfR6A",
     authDomain: "mirrwiki-pro.firebaseapp.com",
@@ -16,7 +16,7 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// --- Constants & Variables ---
+// --- 상태 관리 변수 ---
 const ADMIN_EMAIL = "hl105sk@proton.me";
 const appId = 'mirrwiki-default';
 const KBASE_OFFSET = 44032;
@@ -28,11 +28,11 @@ let isEditing = false;
 let allDocTitles = [];
 let currentDocIsLocked = false;
 
-// --- Firebase Collection Helpers ---
+// --- Firebase 컬렉션 경로 (친구가 정한 깊은 경로 그대로 유지) ---
 const getWikiCollection = () => collection(db, 'artifacts', appId, 'public', 'data', 'wiki_pages');
 const getHistoryCollection = (docId) => collection(getWikiCollection(), docId, 'history');
 
-// --- K-Base / Ascii85 Logic ---
+// --- K-Base 인코딩/디코딩 (원본 로직) ---
 function kBaseEncode(u8) {
     let res = "";
     for (let i = 0; i < u8.length; i += 3) {
@@ -68,14 +68,14 @@ function resolveMediaContent(content, mime = 'image/webp') {
     } catch (e) { return null; }
 }
 
-// --- Navigation & Routing ---
+// --- 라우팅 및 데이터 로드 ---
 window.router = (pageId) => {
     if (!pageId) pageId = "FrontPage";
-    currentDocId = pageId;
     window.history.pushState({ page: pageId }, '', `/w/${encodeURIComponent(pageId)}`);
     fetchDocument(pageId);
     document.getElementById('mobileMenu').classList.add('hidden');
     document.getElementById('searchResults').classList.add('hidden');
+    window.scrollTo(0, 0);
 };
 
 async function fetchDocument(pageId) {
@@ -84,7 +84,8 @@ async function fetchDocument(pageId) {
     const titleDom = document.getElementById('docTitle');
     titleDom.innerText = pageId;
     document.title = `${pageId} - 미르위키`;
-    view.innerHTML = '<div class="text-center p-10"><i class="fa-solid fa-spinner fa-spin text-2xl"></i></div>';
+    view.innerHTML = '<div class="text-center p-20"><i class="fa-solid fa-spinner fa-spin text-4xl text-[#00a495]"></i></div>';
+
     isEditing = false;
     updateModeUI();
 
@@ -105,17 +106,20 @@ async function fetchDocument(pageId) {
             }
             document.getElementById('lastUpdated').innerText = `최근 수정: ${data.updatedAt?.toDate().toLocaleString() || '-'}`;
         } else {
-            view.innerHTML = `<p class="py-10 text-center">'${pageId}' 문서가 없습니다.</p><button onclick="toggleEdit()" class="namu-btn mx-auto block">만들기</button>`;
+            view.innerHTML = `<div class="text-center py-20"><p>'${pageId}' 문서가 없습니다.</p><button onclick="toggleEdit()" class="namu-btn mt-4 mx-auto block">새 문서 작성</button></div>`;
         }
         renderToolbar();
-    } catch (e) { view.innerHTML = "로드 실패"; }
+    } catch (e) {
+        console.error(e);
+        view.innerHTML = `<div class="p-10 text-red-500">데이터 로드 실패 (Firestore 권한을 확인하세요)</div>`;
+    }
 }
 
 async function renderContent(raw) {
     let text = raw;
-    // [[Link]]
+    // [[문서명]] 링크
     text = text.replace(/\[\[([^\]]+)\]\]/g, (_, t) => `<a href="#" onclick="router('${t}')">${t}</a>`);
-    // [* Footnote]
+    // [* 각주]
     let fnIdx = 0;
     text = text.replace(/\[\*\s(.*?)]/g, (_, c) => `<sup class="wiki-fn" onclick="toggleFootnote(this, '${encodeURIComponent(c)}')">[${++fnIdx}]</sup>`);
 
@@ -123,62 +127,64 @@ async function renderContent(raw) {
     if (window.renderMathInElement) renderMathInElement(document.getElementById('viewMode'), { delimiters: [{ left: '$$', right: '$$', display: true }, { left: '$', right: '$', display: false }] });
 }
 
-// --- Auth System ---
+// --- 인증 시스템 ---
 window.handleLogin = async () => {
+    const e = document.getElementById('emailInput').value;
+    const p = document.getElementById('passwordInput').value;
     try {
-        await signInWithEmailAndPassword(auth, document.getElementById('emailInput').value, document.getElementById('passwordInput').value);
+        await signInWithEmailAndPassword(auth, e, p);
         window.closeAuthModal();
-        showToast("로그인 성공");
-    } catch (e) { alert("로그인 실패: " + e.message); }
+        window.showToast("로그인되었습니다.");
+    } catch (err) { alert("로그인 실패"); }
 };
 
 window.handleSignup = async () => {
+    const e = document.getElementById('emailInput').value;
+    const p = document.getElementById('passwordInput').value;
     try {
-        await createUserWithEmailAndPassword(auth, document.getElementById('emailInput').value, document.getElementById('passwordInput').value);
+        await createUserWithEmailAndPassword(auth, e, p);
         window.closeAuthModal();
-        showToast("가입 성공");
-    } catch (e) { alert("가입 실패: " + e.message); }
+        window.showToast("가입되었습니다.");
+    } catch (err) { alert("가입 실패"); }
 };
 
 window.handleLogout = () => signOut(auth);
 
-// --- Admin Features ---
-window.toggleLock = async () => {
-    if (currentUser.email !== ADMIN_EMAIL) return;
-    const newStatus = !currentDocIsLocked;
-    await updateDoc(doc(getWikiCollection(), currentDocId), { isLocked: newStatus });
-    await addDoc(getHistoryCollection(currentDocId), { action: newStatus ? "🔒 잠금" : "🔓 해제", editor: currentUser.email, timestamp: serverTimestamp() });
-    currentDocIsLocked = newStatus;
-    fetchDocument(currentDocId);
-};
-
-// --- CRUD Operations ---
+// --- 문서 작업 ---
 window.saveDocument = async () => {
     if (!currentUser) return window.openAuthModal();
     const content = document.getElementById('editorContent').value;
-    await setDoc(doc(getWikiCollection(), currentDocId), { title: currentDocId, content, updatedAt: serverTimestamp(), updatedBy: currentUser.uid, isLocked: currentDocIsLocked });
-    await addDoc(getHistoryCollection(currentDocId), { action: "수정", editor: currentUser.email, timestamp: serverTimestamp() });
-    showToast("저장 완료");
-    fetchDocument(currentDocId);
+    try {
+        await setDoc(doc(getWikiCollection(), currentDocId), {
+            title: currentDocId, content, updatedAt: serverTimestamp(), updatedBy: currentUser.uid, isLocked: currentDocIsLocked
+        });
+        await addDoc(getHistoryCollection(currentDocId), { action: "수정", editor: currentUser.email, timestamp: serverTimestamp() });
+        window.showToast("저장되었습니다.");
+        fetchDocument(currentDocId);
+    } catch (e) { alert("저장 권한이 없습니다."); }
 };
 
 window.submitDeleteDoc = async () => {
-    await deleteDoc(doc(getWikiCollection(), currentDocId));
-    window.closeDeleteModal();
-    window.router('FrontPage');
+    try {
+        await deleteDoc(doc(getWikiCollection(), currentDocId));
+        window.closeDeleteModal();
+        window.router('FrontPage');
+    } catch (e) { alert("삭제 실패"); }
 };
 
 window.submitMoveDoc = async () => {
-    const newTitle = document.getElementById('moveDocTitleInput').value.trim();
-    if (!newTitle) return;
-    const snap = await getDoc(doc(getWikiCollection(), currentDocId));
-    await setDoc(doc(getWikiCollection(), newTitle), { ...snap.data(), title: newTitle });
-    await deleteDoc(doc(getWikiCollection(), currentDocId));
-    window.closeMoveModal();
-    window.router(newTitle);
+    const newT = document.getElementById('moveDocTitleInput').value.trim();
+    if (!newT) return;
+    try {
+        const oldS = await getDoc(doc(getWikiCollection(), currentDocId));
+        await setDoc(doc(getWikiCollection(), newT), { ...oldS.data(), title: newT });
+        await deleteDoc(doc(getWikiCollection(), currentDocId));
+        window.closeMoveModal();
+        window.router(newT);
+    } catch (e) { alert("이동 실패"); }
 };
 
-// --- Media Uploads ---
+// --- 미디어 업로드 ---
 window.submitImageUpload = async () => {
     const file = document.getElementById('imgFileInput').files[0];
     const name = document.getElementById('imgTitleInput').value.trim();
@@ -195,7 +201,7 @@ window.submitImageUpload = async () => {
             if (w > MAX) { h *= MAX / w; w = MAX; }
             canvas.width = w; canvas.height = h;
             canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-            const content = canvas.toDataURL('image/webp', 0.7);
+            const content = canvas.toDataURL('image/webp', 0.8);
             await setDoc(doc(getWikiCollection(), "사진:" + name), { title: "사진:" + name, content, updatedAt: serverTimestamp() });
             window.closeImageUploadModal();
             window.router("사진:" + name);
@@ -218,7 +224,7 @@ window.submitAudioUpload = async () => {
     };
 };
 
-// --- UI Helpers ---
+// --- UI 및 초기화 ---
 window.openHistoryModal = async () => {
     document.getElementById('historyDocTitle').innerText = currentDocId;
     const list = document.getElementById('historyList');
@@ -228,12 +234,12 @@ window.openHistoryModal = async () => {
     list.innerHTML = snap.empty ? '기록 없음' : '';
     snap.forEach(d => {
         const v = d.data();
-        list.innerHTML += `<tr class="border-b"><td class="p-2">${v.timestamp?.toDate().toLocaleString() || '-'}</td><td class="p-2">${v.editor}</td><td class="p-2">${v.action}</td></tr>`;
+        list.innerHTML += `<tr class="border-b"><td class="p-2 text-xs">${v.timestamp?.toDate().toLocaleString() || '-'}</td><td class="p-2 text-xs font-bold">${v.editor}</td><td class="p-2 text-xs">${v.action}</td></tr>`;
     });
 };
 
 function renderToolbar() {
-    const container = document.getElementById('toolbarButtons');
+    const bar = document.getElementById('toolbarButtons');
     const isAdmin = currentUser && currentUser.email === ADMIN_EMAIL;
     let html = `<button onclick="openHistoryModal()" class="text-xs border px-2 py-1 rounded">역사</button>`;
     if (!currentDocIsLocked || isAdmin) {
@@ -241,31 +247,24 @@ function renderToolbar() {
         html += `<button onclick="openMoveModal()" class="text-xs border px-2 py-1 rounded"><i class="fa-solid fa-arrows-rotate"></i></button>`;
         html += `<button onclick="openDeleteModal()" class="text-xs border px-2 py-1 rounded text-red-500"><i class="fa-solid fa-trash"></i></button>`;
     }
-    if (isAdmin) {
-        html += `<button onclick="toggleLock()" class="text-xs border px-2 py-1 rounded font-bold text-red-600">${currentDocIsLocked ? '🔓' : '🔒'}</button>`;
-    }
-    container.innerHTML = html;
+    bar.innerHTML = html;
 }
 
-window.toggleFootnote = (el, enc) => {
-    const pop = document.getElementById('fnPopover');
-    if (pop.style.display === 'block') { pop.style.display = 'none'; return; }
-    document.getElementById('fnPopoverContent').innerHTML = marked.parse(decodeURIComponent(enc));
-    pop.style.display = 'block';
-    const rect = el.getBoundingClientRect();
-    pop.style.top = (rect.bottom + window.scrollY + 5) + 'px';
-    pop.style.left = rect.left + 'px';
+window.showToast = (m) => {
+    const t = document.getElementById('toast');
+    t.innerText = m; t.classList.remove('translate-y-20');
+    setTimeout(() => t.classList.add('translate-y-20'), 3000);
 };
 
-// --- Initialize ---
+// --- 창 초기화 및 공통 제어 ---
 onAuthStateChanged(auth, user => {
     currentUser = user;
     const authSec = document.getElementById('desktopAuthSection');
     if (user) {
-        authSec.innerHTML = `<button onclick="handleLogout()" class="text-xs bg-teal-700 px-2 py-1 rounded text-white">${user.email.split('@')[0]}</button>`;
-        document.getElementById('mobileAuthItem').innerText = "로그아웃 (" + user.email.split('@')[0] + ")";
+        authSec.innerHTML = `<button onclick="handleLogout()" class="text-xs bg-[#008b7d] px-3 py-1 rounded text-white font-bold">${user.email.split('@')[0]}</button>`;
+        document.getElementById('mobileAuthItem').innerText = "로그아웃";
     } else {
-        authSec.innerHTML = `<button onclick="openAuthModal()" class="text-xs border px-2 py-1 rounded">로그인</button>`;
+        authSec.innerHTML = `<button onclick="openAuthModal()" class="text-xs border border-white px-3 py-1 rounded text-white font-bold">로그인</button>`;
         document.getElementById('mobileAuthItem').innerText = "로그인 / 가입";
     }
     loadRecentChanges();
@@ -290,23 +289,15 @@ async function loadAllTitles() {
     allDocTitles = s.docs.map(d => d.id);
 }
 
-// --- Search & Utils ---
-window.handleSearch = () => {
-    const v = document.getElementById('searchInput').value.trim();
-    if (v) window.router(v);
+// 스크롤 시 진행 바 업데이트
+window.onscroll = () => {
+    const winScroll = document.body.scrollTop || document.documentElement.scrollTop;
+    const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+    const scrolled = (winScroll / height) * 100;
+    document.getElementById("progress-bar").style.width = scrolled + "%";
 };
 
-window.handleRandom = () => {
-    if (allDocTitles.length) window.router(allDocTitles[Math.floor(Math.random() * allDocTitles.length)]);
-};
-
-window.showAllDocuments = () => {
-    const list = [...allDocTitles].sort();
-    document.getElementById('docTitle').innerText = "전체 문서 목록";
-    document.getElementById('viewMode').innerHTML = `<div class="grid grid-cols-2 gap-2">${list.map(t => `<div class="p-2 border rounded cursor-pointer hover:bg-gray-50" onclick="router('${t}')">${t}</div>`).join('')}</div>`;
-};
-
-// --- Modal Controls (Window Mapping) ---
+// --- 모달 제어 함수들 (Window 객체 바인딩) ---
 window.openAuthModal = () => document.getElementById('authModal').classList.remove('hidden');
 window.closeAuthModal = () => document.getElementById('authModal').classList.add('hidden');
 window.openNewDocModal = () => document.getElementById('newDocModal').classList.remove('hidden');
@@ -326,15 +317,10 @@ window.openDeleteModal = () => {
 };
 window.closeDeleteModal = () => document.getElementById('deleteDocModal').classList.add('hidden');
 window.toggleMobileMenu = () => document.getElementById('mobileMenu').classList.toggle('hidden');
-window.showToast = (m) => {
-    const t = document.getElementById('toast');
-    t.innerText = m; t.classList.remove('translate-y-20');
-    setTimeout(() => t.classList.add('translate-y-20'), 3000);
-};
+window.toggleDarkMode = () => document.body.classList.toggle('dark-mode');
 
 window.toggleEdit = async () => {
     if (!currentUser) return window.openAuthModal();
-    if (currentDocIsLocked && currentUser.email !== ADMIN_EMAIL) return alert("문서가 잠겨있습니다.");
     isEditing = !isEditing;
     if (isEditing) {
         const snap = await getDoc(doc(getWikiCollection(), currentDocId));
@@ -347,6 +333,15 @@ function updateModeUI() {
     document.getElementById('viewMode').classList.toggle('hidden', isEditing);
     document.getElementById('editMode').classList.toggle('hidden', !isEditing);
 }
+
+window.handleRandom = () => {
+    if (allDocTitles.length) window.router(allDocTitles[Math.floor(Math.random() * allDocTitles.length)]);
+};
+
+window.handleSearch = () => {
+    const v = document.getElementById('searchInput').value.trim();
+    if (v) window.router(v);
+};
 
 window.createNewDoc = () => {
     const t = document.getElementById('newDocTitleInput').value.trim();
