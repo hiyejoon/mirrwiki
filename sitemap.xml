@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <!-- 메인 -->
+  <url>
+    <loc>https://mirrwiki.netlify.app/</loc>
+    <priority>1.0</priority>
+  </url>
+  <!-- 예시 (나머지 주요 문서는 직접 추가하거나 나중에 Workers로 자동화 가능) -->
+  <url>
+    <loc>https://mirrwiki.netlify.app/w/FrontPage</loc>
+    <priority>0.8</priority>
+  </url>
+</urlset>

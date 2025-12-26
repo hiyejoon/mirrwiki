@@ -5,10 +5,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>미르위키 - MirrWiki</title>
-    <!-- 절대 경로로 로고 설정 -->
     <link rel="icon" type="image/png" href="/logo.png">
 
-    <!-- 외부 라이브러리 로드 -->
+    <!-- 필수 라이브러리 -->
     <script src="https://cdn.tailwindcss.com/3.4.5"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
@@ -18,28 +17,41 @@
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap"
         rel="stylesheet">
 
+    <!-- AI & Graph View Engine -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/universal-sentence-encoder"></script>
+    <script src="https://unpkg.com/force-graph"></script>
+
     <style>
         :root {
             --wiki-primary: #00a495;
             --wiki-hover: #008b7d;
+            --bg-body: #f0f0f0;
+            --bg-card: #ffffff;
+            --text-main: #1a1a1a;
+            --border-color: #e5e7eb;
+        }
+
+        body.dark-mode {
+            --bg-body: #111111;
+            --bg-card: #1c1c1c;
+            --text-main: #d1d1d1;
+            --border-color: #333333;
         }
 
         body {
             font-family: 'Noto Sans KR', sans-serif;
-            background-color: #f0f0f0;
+            background-color: var(--bg-body);
+            color: var(--text-main);
             transition: background-color 0.3s;
             margin: 0;
+            overflow-x: hidden;
         }
 
-        body.dark-mode {
-            background-color: #1a1a1a;
-            color: #e0e0e0;
-        }
-
-        /* 위키 본문 스타일 */
+        /* 위키 레이아웃 스타일 */
         .wiki-content h1 {
-            font-size: 1.8rem;
-            font-weight: 700;
+            font-size: 2rem;
+            font-weight: 800;
             border-bottom: 2px solid var(--wiki-primary);
             margin: 1.5rem 0 1rem;
             padding-bottom: 0.5rem;
@@ -47,322 +59,330 @@
 
         .wiki-content h2 {
             font-size: 1.5rem;
-            font-weight: 600;
-            border-bottom: 1px solid #ccc;
+            font-weight: 700;
+            border-bottom: 1px solid var(--border-color);
             margin: 1.2rem 0 0.8rem;
             padding-bottom: 0.3rem;
         }
 
-        .dark-mode .wiki-content h2 {
-            border-bottom-color: #444;
-        }
-
         .wiki-content p {
-            margin-bottom: 1rem;
-            line-height: 1.6;
+            margin-bottom: 1.2rem;
+            line-height: 1.8;
         }
 
         .wiki-content blockquote {
-            border-left: 4px solid var(--wiki-primary);
-            padding: 10px;
-            background: #f9f9f9;
-            color: #555;
+            border-left: 5px solid var(--wiki-primary);
+            padding: 15px;
+            background: rgba(0, 164, 149, 0.05);
             margin-bottom: 1rem;
-        }
-
-        .dark-mode .wiki-content blockquote {
-            background: #2d2d2d;
-            color: #ccc;
+            border-radius: 0 8px 8px 0;
         }
 
         .wiki-content a {
             color: var(--wiki-primary);
             text-decoration: none;
+            font-weight: 600;
+            border-bottom: 1px solid transparent;
+            transition: 0.2s;
         }
 
         .wiki-content a:hover {
-            text-decoration: underline;
+            border-bottom-color: var(--wiki-primary);
         }
 
-        .wiki-content img {
-            max-width: 100%;
-            height: auto;
-            border-radius: 4px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            margin: 1rem auto;
-            display: block;
-        }
-
-        /* 각주 및 팝오버 */
-        .wiki-fn {
-            color: var(--wiki-primary);
-            cursor: pointer;
-            font-size: 0.75em;
-            vertical-align: super;
-            font-weight: bold;
-        }
-
-        .fn-popover {
-            position: absolute;
-            background: white;
-            border: 1px solid #ccc;
-            border-radius: 6px;
-            padding: 12px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
-            z-index: 100;
-            max-width: 300px;
-            display: none;
-            font-size: 0.9rem;
-            color: #333;
-        }
-
-        .dark-mode .fn-popover {
-            background: #333;
-            color: #fff;
-            border-color: #555;
+        .card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
         }
 
         .namu-btn {
             background-color: var(--wiki-primary);
             color: white;
-            padding: 0.5rem 1rem;
-            border-radius: 0.25rem;
+            padding: 0.6rem 1.2rem;
+            border-radius: 8px;
+            font-weight: 700;
+            cursor: pointer;
             transition: 0.2s;
-            font-weight: bold;
+            border: none;
         }
 
         .namu-btn:hover {
             background-color: var(--wiki-hover);
+            transform: translateY(-1px);
         }
 
-        /* 상단 로딩 바 */
+        /* 상단 프로그레스 바 */
         #progress-bar {
             position: fixed;
             top: 3.5rem;
             left: 0;
             width: 0%;
             height: 3px;
-            background: var(--wiki-primary);
+            background: linear-gradient(to right, #00a495, #00ffcc);
             z-index: 60;
-            transition: width 0.1s;
         }
 
-        .dark-mode .bg-white {
-            background-color: #2d2d2d !important;
-            color: #e0e0e0;
-            border-color: #444 !important;
+        /* 그래프 전용 */
+        #graph-canvas {
+            width: 100%;
+            height: 100%;
+            cursor: crosshair;
         }
 
-        pre {
-            background: #333;
-            color: #fff;
-            padding: 10px;
-            border-radius: 5px;
-            overflow-x: auto;
-            font-size: 0.85rem;
+        .graph-control {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            gap: 8px;
+        }
+
+        /* AI 추천 카드 */
+        .ai-recommendation-card {
+            border: 1px solid var(--border-color);
+            padding: 1rem;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .ai-recommendation-card:hover {
+            border-color: var(--wiki-primary);
+            background: rgba(0, 164, 149, 0.05);
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                display: none;
+            }
         }
     </style>
 </head>
 
 <body class="light-mode">
-
     <div id="progress-bar"></div>
 
-    <!-- 네비게이션 바 -->
-    <nav
-        class="bg-[#00a495] text-white shadow-md fixed w-full top-0 z-50 h-14 flex items-center justify-between px-3 md:px-4">
+    <nav class="bg-[#00a495] text-white shadow-lg fixed w-full top-0 z-50 h-14 flex items-center justify-between px-4">
         <div class="flex items-center gap-3">
             <a href="#" onclick="router('FrontPage')" class="flex items-center gap-2">
-                <!-- 로고 절대 경로 적용 -->
                 <img src="/logo.png" alt="Logo" class="w-8 h-8 object-contain"
                     onerror="this.src='https://cdn-icons-png.flaticon.com/512/10000/10000947.png'">
-                <span class="text-lg md:text-xl font-bold hidden xs:inline">MirrWiki</span>
+                <span class="text-xl font-black tracking-tighter">MIRRWIKI</span>
             </a>
         </div>
-
-        <div class="flex-grow max-w-xl mx-2 relative">
-            <input type="text" id="searchInput" placeholder="검색..."
-                class="w-full px-3 py-1.5 rounded text-black text-sm focus:outline-none"
-                onkeydown="if(event.key === 'Enter') handleSearch()" autocomplete="off">
+        <div class="flex-grow max-w-xl mx-4 relative">
+            <input type="text" id="searchInput" placeholder="지식의 파편을 검색하세요..."
+                class="w-full px-5 py-2 rounded-full text-black text-sm outline-none shadow-inner bg-gray-50 focus:ring-2 focus:ring-white/50 transition-all"
+                onkeydown="if(event.key === 'Enter') handleSearch()">
             <ul id="searchResults"
-                class="hidden absolute top-full left-0 w-full bg-white border shadow-lg rounded-b mt-1 max-h-60 overflow-y-auto z-50 text-black text-sm">
+                class="hidden absolute top-full left-0 w-full bg-white border shadow-2xl rounded-2xl mt-2 max-h-80 overflow-y-auto z-50 text-black text-sm p-2">
             </ul>
         </div>
-
-        <div class="hidden md:flex items-center gap-4 text-sm font-medium">
-            <button onclick="toggleDarkMode()" title="테마 변경"><i class="fa-solid fa-circle-half-stroke"></i></button>
-            <a href="#" onclick="showAllDocuments()" title="문서 목록"><i class="fa-solid fa-list"></i></a>
-            <a href="#" onclick="openNewDocModal()" title="새 문서"><i class="fa-solid fa-plus"></i></a>
-            <a href="#" onclick="openImageUploadModal()" title="이미지 업로드"><i class="fa-solid fa-image"></i></a>
-            <a href="#" onclick="openAudioUploadModal()" title="오디오 업로드"><i class="fa-solid fa-music"></i></a>
+        <div class="hidden md:flex items-center gap-5 text-sm font-bold">
+            <div onclick="toggleDarkMode()" class="cursor-pointer hover:scale-110 transition-transform"><i
+                    class="fa-solid fa-circle-half-stroke" id="theme-icon"></i></div>
+            <a href="#" onclick="openGraphModal()" title="그래프"><i class="fa-solid fa-circle-nodes"></i></a>
+            <a href="#" onclick="showAllDocuments()" title="문서 목록"><i class="fa-solid fa-list-ul"></i></a>
+            <a href="#" onclick="openNewDocModal()" title="문서 추가"><i class="fa-solid fa-plus-circle"></i></a>
+            <a href="#" onclick="openImageUploadModal()" title="이미지"><i class="fa-solid fa-file-image"></i></a>
+            <a href="#" onclick="openAudioUploadModal()" title="오디오"><i class="fa-solid fa-file-audio"></i></a>
             <a href="#" onclick="handleRandom()" title="랜덤"><i class="fa-solid fa-shuffle"></i></a>
             <div id="desktopAuthSection"></div>
         </div>
-
-        <div class="md:hidden flex items-center gap-3">
-            <button onclick="toggleDarkMode()"><i class="fa-solid fa-circle-half-stroke"></i></button>
-            <button onclick="toggleMobileMenu()" class="p-2 text-xl"><i class="fa-solid fa-bars"></i></button>
-        </div>
+        <button onclick="toggleMobileMenu()" class="md:hidden p-2 text-xl"><i
+                class="fa-solid fa-bars-staggered"></i></button>
     </nav>
 
-    <!-- 모바일 메뉴 -->
-    <div id="mobileMenu" class="hidden fixed top-14 left-0 w-full bg-white shadow-lg z-40 border-b md:hidden">
-        <div class="flex flex-col text-gray-800">
-            <a href="#" onclick="showAllDocuments(); toggleMobileMenu()"
-                class="px-4 py-3 border-b border-gray-100 hover:bg-gray-50 flex items-center gap-3"><i
-                    class="fa-solid fa-list w-5 text-[#00a495]"></i> 문서 목록</a>
-            <a href="#" onclick="handleRandom(); toggleMobileMenu()"
-                class="px-4 py-3 border-b border-gray-100 hover:bg-gray-50 flex items-center gap-3"><i
-                    class="fa-solid fa-shuffle w-5 text-[#00a495]"></i> 랜덤 문서</a>
-            <div id="mobileAuthItem" class="px-4 py-3 bg-gray-50 font-bold text-[#00a495]"
-                onclick="handleMobileAuthClick()"></div>
-        </div>
+    <div id="mobileMenu"
+        class="hidden fixed top-14 left-0 w-full bg-white shadow-2xl z-40 border-b md:hidden flex flex-col p-6 gap-6 text-gray-800">
+        <a href="#" onclick="openGraphModal(); toggleMobileMenu()" class="font-bold flex items-center gap-3"><i
+                class="fa-solid fa-circle-nodes text-[#00a495]"></i> 지식 그래프 뷰</a>
+        <a href="#" onclick="showAllDocuments(); toggleMobileMenu()" class="font-bold flex items-center gap-3"><i
+                class="fa-solid fa-list-ul text-[#00a495]"></i> 전체 문서 목록</a>
+        <a href="#" onclick="handleRandom(); toggleMobileMenu()" class="font-bold flex items-center gap-3"><i
+                class="fa-solid fa-shuffle text-[#00a495]"></i> 무작위 탐험</a>
+        <div id="mobileAuthItem" class="font-black text-[#00a495] border-t pt-4 text-center"></div>
     </div>
 
-    <!-- 메인 컨텐츠 -->
-    <div class="pt-24 pb-10 px-4 max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div class="md:col-span-3 bg-white p-6 rounded shadow-sm border border-gray-300 min-h-[80vh] relative">
-            <header class="flex justify-between items-center mb-4 border-b pb-2 flex-wrap gap-2 border-gray-200">
-                <div class="flex items-center gap-2">
-                    <h1 id="docTitle" class="text-2xl md:text-3xl font-bold text-gray-800">FrontPage</h1>
-                    <span id="lockIcon" class="hidden text-red-500 text-xl"><i class="fa-solid fa-lock"></i></span>
+    <main class="pt-24 pb-16 px-4 max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8">
+        <div class="md:col-span-3 card p-8 md:p-12 shadow-sm min-h-[85vh] relative overflow-hidden">
+            <header class="flex justify-between items-start mb-8 border-b pb-6 flex-wrap gap-4 border-gray-100">
+                <div>
+                    <h1 id="docTitle" class="text-4xl md:text-5xl font-black tracking-tight mb-2">로딩 중...</h1>
+                    <div id="lastUpdated" class="text-xs text-gray-400 italic">지식의 근원을 찾는 중입니다.</div>
                 </div>
                 <div class="flex gap-2" id="toolbarButtons"></div>
             </header>
-            <div id="lastUpdated" class="text-right text-xs text-gray-400 mb-4"></div>
 
             <article id="viewMode" class="wiki-content break-words"></article>
 
-            <div id="editMode" class="hidden">
-                <textarea id="editorContent"
-                    class="w-full h-[500px] p-4 border rounded font-mono text-sm focus:ring-2 focus:ring-[#00a495] outline-none dark:bg-[#1a1a1a] dark:text-white"
-                    placeholder="내용을 입력하세요..."></textarea>
-                <div class="mt-4 flex justify-end gap-2">
-                    <button onclick="cancelEdit()" class="px-4 py-2 border rounded">취소</button>
-                    <button onclick="saveDocument()" id="saveBtn" class="namu-btn">저장</button>
+            <!-- AI 추천 섹션 -->
+            <section id="ai-recs" class="hidden mt-20 border-t pt-10 border-dashed border-gray-300">
+                <div class="flex items-center gap-3 mb-6">
+                    <span
+                        class="bg-gradient-to-r from-teal-500 to-blue-500 text-white text-[10px] px-3 py-1 rounded-full font-black">AI
+                        RELEVANCE</span>
+                    <h3 class="font-bold text-lg">AI가 발견한 연관 지식</h3>
                 </div>
+                <div id="rec-list" class="grid grid-cols-1 sm:grid-cols-2 gap-4"></div>
+            </section>
+
+            <!-- 편집기 영역 -->
+            <div id="editMode" class="hidden">
+                <div class="bg-gray-100 dark:bg-white/5 p-4 mb-6 rounded-xl text-sm font-medium">편집 대상: <span
+                        id="editing-title-display"></span></div>
+                <textarea id="editorContent"
+                    class="w-full h-[650px] p-6 border rounded-2xl font-mono text-sm outline-none bg-transparent focus:ring-4 focus:ring-[#00a495]/20 transition-all border-gray-200"></textarea>
+                <div class="mt-8 flex justify-end gap-3"><button onclick="cancelEdit()"
+                        class="px-8 py-3 border rounded-xl font-bold hover:bg-gray-100 transition-colors">취소</button><button
+                        onclick="saveDocument()" id="saveBtn" class="namu-btn px-10 shadow-lg shadow-[#00a495]/30">지식
+                        보존하기</button></div>
             </div>
         </div>
 
-        <!-- 사이드바 -->
-        <aside class="sidebar md:col-span-1 space-y-4">
-            <div class="bg-white rounded shadow-sm border border-gray-300 overflow-hidden">
-                <div class="bg-[#00a495] text-white px-4 py-2 font-bold text-sm">최근 변경</div>
+        <aside class="sidebar md:col-span-1 space-y-8">
+            <div class="card rounded-2xl shadow-xl overflow-hidden border-none">
+                <div class="bg-[#00a495] text-white px-5 py-3 font-bold flex justify-between items-center text-sm">
+                    <span>실시간 업데이트</span>
+                    <i class="fa-solid fa-bolt animate-pulse"></i>
+                </div>
                 <ul id="recentList" class="divide-y divide-gray-100 text-sm"></ul>
             </div>
+            <div class="card p-6 bg-gradient-to-br from-[#00a495]/10 to-transparent border-none">
+                <h3 class="font-bold text-sm mb-4">Wiki Statistics</h3>
+                <div class="space-y-2 text-xs text-gray-500">
+                    <div class="flex justify-between"><span>총 문서 수</span><span id="stat-total"
+                            class="font-bold text-gray-800 dark:text-gray-200">-</span></div>
+                    <div class="flex justify-between"><span>활성 사용자</span><span id="stat-users"
+                            class="font-bold text-gray-800 dark:text-gray-200">-</span></div>
+                </div>
+            </div>
         </aside>
-    </div>
+    </main>
 
-    <!-- 모든 모달창 -->
-    <!-- 로그인 모달 -->
-    <div id="authModal"
-        class="hidden fixed inset-0 bg-black bg-opacity-50 z-[100] flex items-center justify-center p-4">
-        <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-sm">
-            <h3 class="text-xl font-bold mb-4">로그인 / 가입</h3>
-            <input type="email" id="emailInput" class="w-full border p-2 rounded mb-3" placeholder="이메일">
-            <input type="password" id="passwordInput" class="w-full border p-2 rounded mb-4" placeholder="비밀번호">
-            <button onclick="handleLogin()"
-                class="w-full bg-[#00a495] text-white py-2 rounded mb-2 font-bold">로그인</button>
-            <button onclick="handleSignup()"
-                class="w-full border border-[#00a495] text-[#00a495] py-2 rounded font-bold">회원가입</button>
-            <button onclick="closeAuthModal()" class="w-full mt-4 text-gray-400 text-sm">닫기</button>
-        </div>
-    </div>
-
-    <!-- 새 문서 모달 -->
-    <div id="newDocModal"
-        class="hidden fixed inset-0 bg-black bg-opacity-50 z-[90] flex items-center justify-center p-4">
-        <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
-            <h3 class="text-lg font-bold mb-4">새 문서 만들기</h3>
-            <input type="text" id="newDocTitleInput" class="w-full border p-2 rounded mb-4" placeholder="제목">
-            <div class="flex justify-end gap-2">
-                <button onclick="closeNewDocModal()" class="px-4 py-2">취소</button>
-                <button onclick="createNewDoc()" class="namu-btn">만들기</button>
+    <!-- 옵시디언 그래프 뷰 모달 -->
+    <div id="graphModal"
+        class="hidden fixed inset-0 bg-black/90 z-[150] flex items-center justify-center p-4 backdrop-blur-md">
+        <div
+            class="bg-white dark:bg-[#111111] w-full max-w-6xl h-[85vh] rounded-3xl overflow-hidden flex flex-col shadow-2xl relative">
+            <div class="p-6 border-b flex justify-between items-center bg-gray-50 dark:bg-white/5">
+                <div class="flex items-center gap-3">
+                    <div class="w-3 h-3 bg-[#00a495] rounded-full animate-ping"></div>
+                    <h3 class="font-black text-xl tracking-tight">KNOWLEDGE GRAPH</h3>
+                </div>
+                <button onclick="document.getElementById('graphModal').classList.add('hidden')"
+                    class="text-3xl hover:text-red-500 transition-colors">&times;</button>
+            </div>
+            <div id="graph-canvas" class="flex-1"></div>
+            <div
+                class="absolute bottom-6 left-6 p-4 bg-black/20 backdrop-blur-md rounded-2xl text-[11px] text-white/70 border border-white/10 pointer-events-none">
+                <strong>그래프 가이드</strong><br>
+                • 스크롤: 확대/축소<br>
+                • 드래그: 시점 이동 / 노드 고정<br>
+                • 클릭: 해당 문서로 이동
             </div>
         </div>
     </div>
 
-    <!-- 역사 모달 -->
-    <div id="historyModal"
-        class="hidden fixed inset-0 bg-black bg-opacity-50 z-[90] flex items-center justify-center p-4">
-        <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col">
-            <h3 class="text-lg font-bold mb-4 border-b pb-2 text-[#00a495]">'<span id="historyDocTitle"></span>' 역사</h3>
-            <div class="overflow-y-auto flex-1">
+    <!-- 기타 모달창들 -->
+    <div id="authModal"
+        class="hidden fixed inset-0 bg-black/80 z-[200] flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="card p-10 rounded-3xl shadow-2xl w-full max-w-sm">
+            <div class="text-center mb-8"><i class="fa-solid fa-dragon text-5xl text-[#00a495]"></i></div>
+            <h3 class="text-2xl font-black mb-8 text-center tracking-tighter italic">MIRRWIKI ARCHIVE</h3>
+            <input type="email" id="emailInput"
+                class="w-full border-2 p-4 rounded-xl mb-4 bg-transparent outline-none focus:border-[#00a495]"
+                placeholder="이메일">
+            <input type="password" id="passwordInput"
+                class="w-full border-2 p-4 rounded-xl mb-6 bg-transparent outline-none focus:border-[#00a495]"
+                placeholder="비밀번호">
+            <button onclick="handleLogin()"
+                class="w-full bg-[#00a495] text-white py-4 rounded-xl font-bold mb-3 shadow-lg">로그인</button>
+            <button onclick="handleSignup()"
+                class="w-full border-2 border-[#00a495] text-[#00a495] py-4 rounded-xl font-bold">새로운 기여자 등록</button>
+            <button onclick="closeAuthModal()" class="w-full mt-6 text-gray-400 text-xs">닫기</button>
+        </div>
+    </div>
+
+    <div id="historyModal" class="hidden fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4">
+        <div class="card p-8 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col">
+            <h3 class="text-2xl font-black mb-6 border-b pb-4 text-[#00a495]">편집 타임라인</h3>
+            <div class="overflow-y-auto flex-1 rounded-xl border border-gray-100 dark:border-white/10">
                 <table class="w-full text-sm text-left">
-                    <thead class="bg-gray-50 sticky top-0">
-                        <tr>
-                            <th class="p-2 border-b">시간</th>
-                            <th class="p-2 border-b">사용자</th>
-                            <th class="p-2 border-b">작업</th>
-                        </tr>
-                    </thead>
                     <tbody id="historyList" class="divide-y"></tbody>
                 </table>
             </div>
             <button onclick="document.getElementById('historyModal').classList.add('hidden')"
-                class="mt-4 py-2 bg-gray-100 rounded">닫기</button>
+                class="mt-6 py-4 bg-gray-100 dark:bg-white/5 rounded-xl font-bold">창 닫기</button>
         </div>
     </div>
 
-    <!-- 이미지 업로드 모달 -->
-    <div id="imageUploadModal"
-        class="hidden fixed inset-0 bg-black bg-opacity-50 z-[90] flex items-center justify-center p-4">
-        <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
-            <h3 class="text-lg font-bold mb-4">이미지 업로드</h3>
-            <input type="text" id="imgTitleInput" class="w-full border p-2 mb-3 rounded" placeholder="이미지 이름">
-            <input type="file" id="imgFileInput" accept="image/*" class="w-full mb-4">
-            <button onclick="submitImageUpload()" id="imgUploadBtn" class="namu-btn w-full">업로드</button>
-            <button onclick="closeImageUploadModal()" class="w-full mt-2 text-gray-400">취소</button>
+    <div id="imageUploadModal" class="hidden fixed inset-0 bg-black/60 z-[110] flex items-center justify-center p-4">
+        <div class="card p-10 rounded-3xl w-full max-w-md">
+            <h3 class="text-2xl font-black mb-2 text-[#00a495]">이미지 데이터 각인</h3>
+            <p class="text-xs text-gray-400 mb-8 italic">* Firestore 최적화 인코딩 적용</p>
+            <div class="flex border-2 rounded-xl overflow-hidden mb-6 focus-within:border-[#00a495] transition-all">
+                <span class="bg-gray-100 dark:bg-white/10 px-5 py-4 text-xs font-black border-r">사진:</span><input
+                    type="text" id="imgTitleInput" class="w-full p-4 text-sm outline-none bg-transparent"
+                    placeholder="제목"></div>
+            <input type="file" id="imgFileInput" accept="image/*"
+                class="w-full text-sm mb-6 file:bg-[#00a495] file:text-white file:border-none file:px-4 file:py-2 file:rounded-lg">
+            <button onclick="submitImageUpload()" id="imgUploadBtn" class="namu-btn w-full py-5 text-lg">데이터 전송
+                시작</button>
+            <button onclick="closeImageUploadModal()" class="w-full mt-4 text-gray-400 text-xs">취소</button>
         </div>
     </div>
 
-    <!-- 오디오 업로드 모달 -->
-    <div id="audioUploadModal"
-        class="hidden fixed inset-0 bg-black bg-opacity-50 z-[90] flex items-center justify-center p-4">
-        <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
-            <h3 class="text-lg font-bold mb-4 text-[#00a495]">오디오 올리기 (K-4096)</h3>
-            <input type="text" id="audioTitleInput" class="w-full border p-2 mb-3 rounded" placeholder="오디오 이름">
-            <input type="file" id="audioFileInput" accept="audio/*" class="w-full mb-4">
-            <button onclick="submitAudioUpload()" id="audioUploadBtn" class="namu-btn w-full">업로드</button>
-            <button onclick="closeAudioUploadModal()" class="w-full mt-2 text-gray-400 text-xs">취소</button>
+    <div id="audioUploadModal" class="hidden fixed inset-0 bg-black/60 z-[110] flex items-center justify-center p-4">
+        <div class="card p-10 rounded-3xl w-full max-w-md">
+            <h3 class="text-2xl font-black mb-2 text-[#00a495]">오디오 데이터 각인</h3>
+            <p class="text-xs text-gray-400 mb-8 italic">* K-Base 4096 하이-덴시티 인코딩</p>
+            <div class="flex border-2 rounded-xl overflow-hidden mb-6 focus-within:border-[#00a495] transition-all">
+                <span class="bg-gray-100 dark:bg-white/10 px-5 py-4 text-xs font-black border-r">오디오:</span><input
+                    type="text" id="audioTitleInput" class="w-full p-4 text-sm outline-none bg-transparent"
+                    placeholder="제목"></div>
+            <input type="file" id="audioFileInput" accept="audio/*" class="w-full text-sm mb-6">
+            <button onclick="submitAudioUpload()" id="audioUploadBtn" class="namu-btn w-full py-5 text-lg">데이터 전송
+                시작</button>
         </div>
     </div>
 
-    <!-- 문서 이동 모달 -->
-    <div id="moveDocModal"
-        class="hidden fixed inset-0 bg-black bg-opacity-50 z-[90] flex items-center justify-center p-4">
-        <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
-            <h3 class="text-lg font-bold mb-4">문서 이동</h3>
-            <input type="text" id="moveDocTitleInput" class="w-full border p-2 rounded mb-4" placeholder="새 제목">
-            <div class="flex justify-end gap-2">
-                <button onclick="closeMoveModal()" class="px-4 py-2">취소</button>
-                <button onclick="submitMoveDoc()" class="namu-btn">이동</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- 문서 삭제 모달 -->
     <div id="deleteDocModal"
-        class="hidden fixed inset-0 bg-black bg-opacity-50 z-[90] flex items-center justify-center p-4">
-        <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md text-center">
-            <h3 class="text-lg font-bold mb-2">문서 삭제</h3>
-            <p class="mb-4 text-sm text-gray-500">'<span id="deleteTargetTitle"></span>' 문서를 삭제하시겠습니까?</p>
-            <div class="flex justify-center gap-2">
-                <button onclick="closeDeleteModal()" class="px-4 py-2 border rounded">취소</button>
-                <button onclick="submitDeleteDoc()"
-                    class="bg-red-600 text-white px-6 py-2 rounded font-bold">삭제</button>
-            </div>
+        class="hidden fixed inset-0 bg-black/80 z-[120] flex items-center justify-center p-4 backdrop-blur-md">
+        <div class="card p-12 rounded-[40px] w-full max-w-md text-center border-t-[12px] border-red-500">
+            <h3 class="text-3xl font-black mb-4 text-red-500">지식의 말소</h3>
+            <p class="mb-10 text-sm text-gray-500 leading-relaxed font-medium">'<span id="deleteTargetTitle"
+                    class="font-extrabold text-black dark:text-white underline"></span>' 문서를 영구히 말소하시겠습니까?<br>이 작업은
+                아카이브에서 완전히 삭제됩니다.</p>
+            <div class="flex flex-col gap-4"><button onclick="submitDeleteDoc()"
+                    class="bg-red-600 text-white py-5 rounded-2xl font-black text-xl shadow-xl shadow-red-500/20">영구
+                    삭제</button><button onclick="closeDeleteModal()"
+                    class="py-2 text-gray-400 font-bold hover:text-gray-600 transition-colors">아니요, 보존할게요</button></div>
         </div>
     </div>
 
+    <div id="moveDocModal" class="hidden fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4">
+        <div class="card p-8 rounded-2xl w-full max-w-md">
+            <h3 class="text-xl font-black mb-6">제목 변경 (이동)</h3>
+            <input type="text" id="moveDocTitleInput"
+                class="w-full border-2 p-4 rounded-xl mb-6 bg-transparent outline-none focus:border-[#00a495]"
+                placeholder="바꿀 제목">
+            <div class="flex justify-end gap-3"><button onclick="closeMoveModal()"
+                    class="px-6 py-2 text-gray-500">취소</button><button onclick="submitMoveDoc()"
+                    class="namu-btn px-8">변경 실행</button></div>
+        </div>
+    </div>
+
+    <!-- UI 오버레이 -->
     <div id="fnPopover" class="fn-popover">
         <div id="fnPopoverContent"></div>
     </div>
     <div id="toast"
-        class="fixed bottom-4 right-4 bg-gray-800 text-white px-4 py-2 rounded shadow-lg transform translate-y-20 transition-transform duration-300 z-[200]">
+        class="fixed bottom-8 right-8 bg-gray-900 text-white px-8 py-4 rounded-2xl shadow-2xl transform translate-y-40 transition-transform duration-500 z-[300] border border-white/10 flex items-center gap-4">
     </div>
 
-    <!-- Firebase SDK 로드 전용 스크립트 파일 -->
     <script type="module" src="/script.js"></script>
 </body>
 
