@@ -4,10 +4,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>미르위키 - MirrWiki</title>
+    <title>미르위키 - MirrWiki Pro</title>
     <link rel="icon" type="image/png" href="/logo.png">
 
-    <!-- 필수 라이브러리 -->
+    <!-- 외부 라이브러리 -->
     <script src="https://cdn.tailwindcss.com/3.4.5"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
@@ -17,7 +17,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap"
         rel="stylesheet">
 
-    <!-- AI & Graph View Engine -->
+    <!-- AI & Graph Engine -->
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/universal-sentence-encoder"></script>
     <script src="https://unpkg.com/force-graph"></script>
@@ -33,10 +33,10 @@
         }
 
         body.dark-mode {
-            --bg-body: #111111;
-            --bg-card: #1c1c1c;
+            --bg-body: #0f0f0f;
+            --bg-card: #1a1a1a;
             --text-main: #d1d1d1;
-            --border-color: #333333;
+            --border-color: #2d2d2d;
         }
 
         body {
@@ -48,20 +48,20 @@
             overflow-x: hidden;
         }
 
-        /* 위키 레이아웃 스타일 */
+        /* 위키 본문 스타일 */
         .wiki-content h1 {
-            font-size: 2rem;
-            font-weight: 800;
-            border-bottom: 2px solid var(--wiki-primary);
-            margin: 1.5rem 0 1rem;
+            font-size: 2.2rem;
+            font-weight: 900;
+            border-bottom: 3px solid var(--wiki-primary);
+            margin: 2rem 0 1rem;
             padding-bottom: 0.5rem;
         }
 
         .wiki-content h2 {
-            font-size: 1.5rem;
+            font-size: 1.6rem;
             font-weight: 700;
             border-bottom: 1px solid var(--border-color);
-            margin: 1.2rem 0 0.8rem;
+            margin: 1.5rem 0 0.8rem;
             padding-bottom: 0.3rem;
         }
 
@@ -72,85 +72,143 @@
 
         .wiki-content blockquote {
             border-left: 5px solid var(--wiki-primary);
-            padding: 15px;
+            padding: 15px 20px;
             background: rgba(0, 164, 149, 0.05);
-            margin-bottom: 1rem;
-            border-radius: 0 8px 8px 0;
+            margin-bottom: 1.5rem;
+            border-radius: 0 12px 12px 0;
         }
 
         .wiki-content a {
             color: var(--wiki-primary);
             text-decoration: none;
             font-weight: 600;
-            border-bottom: 1px solid transparent;
             transition: 0.2s;
         }
 
         .wiki-content a:hover {
-            border-bottom-color: var(--wiki-primary);
+            background: rgba(0, 164, 149, 0.1);
+            border-radius: 4px;
         }
 
         .card {
             background-color: var(--bg-card);
             border: 1px solid var(--border-color);
-            border-radius: 12px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
         }
 
         .namu-btn {
             background-color: var(--wiki-primary);
             color: white;
-            padding: 0.6rem 1.2rem;
-            border-radius: 8px;
+            padding: 0.7rem 1.5rem;
+            border-radius: 10px;
             font-weight: 700;
             cursor: pointer;
             transition: 0.2s;
             border: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
         }
 
         .namu-btn:hover {
             background-color: var(--wiki-hover);
-            transform: translateY(-1px);
+            transform: translateY(-2px);
         }
 
-        /* 상단 프로그레스 바 */
         #progress-bar {
             position: fixed;
             top: 3.5rem;
             left: 0;
             width: 0%;
-            height: 3px;
+            height: 4px;
             background: linear-gradient(to right, #00a495, #00ffcc);
             z-index: 60;
         }
 
-        /* 그래프 전용 */
-        #graph-canvas {
-            width: 100%;
-            height: 100%;
-            cursor: crosshair;
+        /* AI 요약 박스 */
+        #ai-summary-box {
+            background: linear-gradient(135deg, rgba(0, 164, 149, 0.08), transparent);
+            border-left: 5px solid #00a495;
+            padding: 1.8rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+            display: none;
         }
 
-        .graph-control {
-            position: absolute;
-            bottom: 20px;
-            right: 20px;
-            display: flex;
+        /* AI 태그 박스 (3단계 준비) */
+        #ai-tags-box {
+            margin-bottom: 1.5rem;
+            display: none;
             gap: 8px;
+            flex-wrap: wrap;
         }
 
-        /* AI 추천 카드 */
-        .ai-recommendation-card {
-            border: 1px solid var(--border-color);
-            padding: 1rem;
+        .ai-tag {
+            background: rgba(0, 164, 149, 0.1);
+            color: #00a495;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 800;
+            border: 1px solid rgba(0, 164, 149, 0.2);
+        }
+
+        pre {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
             border-radius: 10px;
-            cursor: pointer;
-            transition: 0.3s;
+            overflow-x: auto;
+            font-size: 0.85rem;
+            border: 1px solid #333;
+            margin-bottom: 1rem;
         }
 
-        .ai-recommendation-card:hover {
-            border-color: var(--wiki-primary);
-            background: rgba(0, 164, 149, 0.05);
+        /* 설정 토글 스위치 */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 22px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked+.slider {
+            background-color: #00a495;
+        }
+
+        input:checked+.slider:before {
+            transform: translateX(22px);
         }
 
         @media (max-width: 768px) {
@@ -158,229 +216,290 @@
                 display: none;
             }
         }
+
+        #scroll-top-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 50px;
+            height: 50px;
+            background: #00a495;
+            color: white;
+            border-radius: 50%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
     </style>
 </head>
 
 <body class="light-mode">
     <div id="progress-bar"></div>
+    <div id="scroll-top-btn" onclick="window.scrollTo({top:0, behavior:'smooth'})"><i class="fa-solid fa-arrow-up"></i>
+    </div>
 
-    <nav class="bg-[#00a495] text-white shadow-lg fixed w-full top-0 z-50 h-14 flex items-center justify-between px-4">
+    <nav class="bg-[#00a495] text-white shadow-xl fixed w-full top-0 z-50 h-14 flex items-center justify-between px-4">
         <div class="flex items-center gap-3">
-            <a href="#" onclick="router('FrontPage')" class="flex items-center gap-2">
-                <img src="/logo.png" alt="Logo" class="w-8 h-8 object-contain"
+            <a href="#" onclick="router('FrontPage')" class="flex items-center gap-2 group">
+                <img src="/logo.png" alt="Logo" class="w-9 h-9 object-contain"
                     onerror="this.src='https://cdn-icons-png.flaticon.com/512/10000/10000947.png'">
-                <span class="text-xl font-black tracking-tighter">MIRRWIKI</span>
+                <span class="text-xl font-black tracking-tighter italic">MIRRWIKI</span>
             </a>
         </div>
         <div class="flex-grow max-w-xl mx-4 relative">
-            <input type="text" id="searchInput" placeholder="지식의 파편을 검색하세요..."
-                class="w-full px-5 py-2 rounded-full text-black text-sm outline-none shadow-inner bg-gray-50 focus:ring-2 focus:ring-white/50 transition-all"
+            <input type="text" id="searchInput" placeholder="지식 탐색..."
+                class="w-full px-6 py-2 rounded-full text-black text-sm outline-none bg-gray-50 shadow-inner"
                 onkeydown="if(event.key === 'Enter') handleSearch()">
             <ul id="searchResults"
-                class="hidden absolute top-full left-0 w-full bg-white border shadow-2xl rounded-2xl mt-2 max-h-80 overflow-y-auto z-50 text-black text-sm p-2">
+                class="hidden absolute top-full left-0 w-full bg-white border shadow-2xl rounded-2xl mt-3 max-h-80 overflow-y-auto z-50 text-black text-sm p-3">
             </ul>
         </div>
-        <div class="hidden md:flex items-center gap-5 text-sm font-bold">
-            <div onclick="toggleDarkMode()" class="cursor-pointer hover:scale-110 transition-transform"><i
+        <div class="hidden md:flex items-center gap-5 text-sm font-black">
+            <div onclick="toggleDarkMode()" class="cursor-pointer transition-transform hover:scale-125"><i
                     class="fa-solid fa-circle-half-stroke" id="theme-icon"></i></div>
+            <div onclick="openSettingsModal()" class="cursor-pointer hover:rotate-90 transition-transform"><i
+                    class="fa-solid fa-gear"></i></div>
             <a href="#" onclick="openGraphModal()" title="그래프"><i class="fa-solid fa-circle-nodes"></i></a>
-            <a href="#" onclick="showAllDocuments()" title="문서 목록"><i class="fa-solid fa-list-ul"></i></a>
-            <a href="#" onclick="openNewDocModal()" title="문서 추가"><i class="fa-solid fa-plus-circle"></i></a>
-            <a href="#" onclick="openImageUploadModal()" title="이미지"><i class="fa-solid fa-file-image"></i></a>
-            <a href="#" onclick="openAudioUploadModal()" title="오디오"><i class="fa-solid fa-file-audio"></i></a>
+            <a href="#" onclick="showAllDocuments()" title="목록"><i class="fa-solid fa-list-ol"></i></a>
             <a href="#" onclick="handleRandom()" title="랜덤"><i class="fa-solid fa-shuffle"></i></a>
             <div id="desktopAuthSection"></div>
         </div>
-        <button onclick="toggleMobileMenu()" class="md:hidden p-2 text-xl"><i
+        <button onclick="toggleMobileMenu()" class="md:hidden p-2 text-2xl"><i
                 class="fa-solid fa-bars-staggered"></i></button>
     </nav>
 
     <div id="mobileMenu"
-        class="hidden fixed top-14 left-0 w-full bg-white shadow-2xl z-40 border-b md:hidden flex flex-col p-6 gap-6 text-gray-800">
-        <a href="#" onclick="openGraphModal(); toggleMobileMenu()" class="font-bold flex items-center gap-3"><i
-                class="fa-solid fa-circle-nodes text-[#00a495]"></i> 지식 그래프 뷰</a>
-        <a href="#" onclick="showAllDocuments(); toggleMobileMenu()" class="font-bold flex items-center gap-3"><i
-                class="fa-solid fa-list-ul text-[#00a495]"></i> 전체 문서 목록</a>
-        <a href="#" onclick="handleRandom(); toggleMobileMenu()" class="font-bold flex items-center gap-3"><i
-                class="fa-solid fa-shuffle text-[#00a495]"></i> 무작위 탐험</a>
-        <div id="mobileAuthItem" class="font-black text-[#00a495] border-t pt-4 text-center"></div>
+        class="hidden fixed top-14 left-0 w-full bg-white shadow-2xl z-40 border-b md:hidden flex flex-col p-8 gap-8 text-gray-800 font-bold">
+        <a href="#" onclick="openSettingsModal(); toggleMobileMenu()"><i
+                class="fa-solid fa-gear text-[#00a495] mr-2"></i> 개인 설정</a>
+        <a href="#" onclick="openGraphModal(); toggleMobileMenu()"><i
+                class="fa-solid fa-circle-nodes text-[#00a495] mr-2"></i> 지식 그래프</a>
+        <a href="#" onclick="showAllDocuments(); toggleMobileMenu()"><i
+                class="fa-solid fa-list-ol text-[#00a495] mr-2"></i> 전체 목록</a>
+        <div id="mobileAuthItem" class="font-black text-[#00a495] border-t-2 pt-6 text-center"></div>
     </div>
 
-    <main class="pt-24 pb-16 px-4 max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8">
-        <div class="md:col-span-3 card p-8 md:p-12 shadow-sm min-h-[85vh] relative overflow-hidden">
-            <header class="flex justify-between items-start mb-8 border-b pb-6 flex-wrap gap-4 border-gray-100">
-                <div>
-                    <h1 id="docTitle" class="text-4xl md:text-5xl font-black tracking-tight mb-2">로딩 중...</h1>
-                    <div id="lastUpdated" class="text-xs text-gray-400 italic">지식의 근원을 찾는 중입니다.</div>
+    <main class="pt-24 pb-20 px-4 max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-10">
+        <div class="md:col-span-3 card p-8 md:p-14 shadow-lg min-h-[90vh] relative">
+            <header class="mb-10 border-b pb-8 border-gray-100">
+                <div class="flex justify-between items-start mb-4">
+                    <h1 id="docTitle" class="text-4xl md:text-6xl font-black tracking-tighter break-all">로딩 중...</h1>
+                    <div class="flex gap-2" id="toolbarButtons"></div>
                 </div>
-                <div class="flex gap-2" id="toolbarButtons"></div>
+                <div class="flex items-center gap-4 text-xs text-gray-400 font-bold uppercase tracking-widest">
+                    <span id="lastUpdated">...</span>
+                    <span class="w-1 h-1 bg-gray-300 rounded-full"></span>
+                    <span id="reading-time">계산 중...</span>
+                    <button onclick="copyCurrentURL()" class="hover:text-[#00a495] ml-auto"><i
+                            class="fa-solid fa-link mr-1"></i> 공유</button>
+                </div>
             </header>
+
+            <!-- AI 3단계: 자동 태그 (Step 3) -->
+            <div id="ai-tags-box"></div>
+
+            <!-- AI 2단계: 핵심 요약 (Step 2) -->
+            <section id="ai-summary-box">
+                <div class="flex items-center gap-2 mb-4">
+                    <span class="bg-[#00a495] text-white text-[9px] px-2 py-0.5 rounded-full font-black">AI
+                        ANALYTICS</span>
+                    <h4 class="font-black text-sm">지식의 정수</h4>
+                </div>
+                <ul id="ai-summary-list"
+                    class="text-sm md:text-base space-y-3 list-none p-0 opacity-90 leading-relaxed font-medium"></ul>
+            </section>
 
             <article id="viewMode" class="wiki-content break-words"></article>
 
-            <!-- AI 추천 섹션 -->
-            <section id="ai-recs" class="hidden mt-20 border-t pt-10 border-dashed border-gray-300">
-                <div class="flex items-center gap-3 mb-6">
-                    <span
-                        class="bg-gradient-to-r from-teal-500 to-blue-500 text-white text-[10px] px-3 py-1 rounded-full font-black">AI
-                        RELEVANCE</span>
-                    <h3 class="font-bold text-lg">AI가 발견한 연관 지식</h3>
-                </div>
-                <div id="rec-list" class="grid grid-cols-1 sm:grid-cols-2 gap-4"></div>
+            <!-- AI 1단계: 추천 (Step 1) -->
+            <section id="ai-recs" class="hidden mt-24 border-t-2 pt-12 border-dashed border-gray-200">
+                <div class="font-black mb-8 flex items-center gap-3 text-xl tracking-tighter"><i
+                        class="fa-solid fa-wand-magic-sparkles text-[#00a495]"></i> 함께 탐험할 지식들</div>
+                <div id="rec-list" class="grid grid-cols-1 sm:grid-cols-2 gap-6"></div>
             </section>
 
-            <!-- 편집기 영역 -->
             <div id="editMode" class="hidden">
-                <div class="bg-gray-100 dark:bg-white/5 p-4 mb-6 rounded-xl text-sm font-medium">편집 대상: <span
-                        id="editing-title-display"></span></div>
+                <div
+                    class="bg-blue-50 dark:bg-blue-900/20 p-5 mb-8 rounded-2xl text-sm border-l-8 border-blue-500 font-bold">
+                    현재 편집 중: <span id="editing-title-display"></span>
+                </div>
                 <textarea id="editorContent"
-                    class="w-full h-[650px] p-6 border rounded-2xl font-mono text-sm outline-none bg-transparent focus:ring-4 focus:ring-[#00a495]/20 transition-all border-gray-200"></textarea>
-                <div class="mt-8 flex justify-end gap-3"><button onclick="cancelEdit()"
-                        class="px-8 py-3 border rounded-xl font-bold hover:bg-gray-100 transition-colors">취소</button><button
-                        onclick="saveDocument()" id="saveBtn" class="namu-btn px-10 shadow-lg shadow-[#00a495]/30">지식
-                        보존하기</button></div>
+                    class="w-full h-[700px] p-8 border rounded-3xl font-mono text-base outline-none bg-transparent focus:ring-8 focus:ring-[#00a495]/5 border-gray-200 transition-all"></textarea>
+                <div class="mt-10 flex justify-end gap-4">
+                    <button onclick="cancelEdit()"
+                        class="px-10 py-4 border rounded-2xl font-black uppercase text-xs">Cancel</button>
+                    <button onclick="saveDocument()" id="saveBtn" class="namu-btn px-14 text-lg">기록 각인</button>
+                </div>
             </div>
         </div>
 
-        <aside class="sidebar md:col-span-1 space-y-8">
-            <div class="card rounded-2xl shadow-xl overflow-hidden border-none">
-                <div class="bg-[#00a495] text-white px-5 py-3 font-bold flex justify-between items-center text-sm">
-                    <span>실시간 업데이트</span>
-                    <i class="fa-solid fa-bolt animate-pulse"></i>
+        <aside class="sidebar md:col-span-1 space-y-10">
+            <div class="card rounded-3xl shadow-2xl overflow-hidden border-none">
+                <div
+                    class="bg-[#00a495] text-white px-6 py-4 font-black flex justify-between items-center text-xs tracking-widest uppercase">
+                    <span>Recent Changes</span>
+                    <i class="fa-solid fa-clock-rotate-left opacity-40"></i>
                 </div>
                 <ul id="recentList" class="divide-y divide-gray-100 text-sm"></ul>
             </div>
-            <div class="card p-6 bg-gradient-to-br from-[#00a495]/10 to-transparent border-none">
-                <h3 class="font-bold text-sm mb-4">Wiki Statistics</h3>
-                <div class="space-y-2 text-xs text-gray-500">
-                    <div class="flex justify-between"><span>총 문서 수</span><span id="stat-total"
-                            class="font-bold text-gray-800 dark:text-gray-200">-</span></div>
-                    <div class="flex justify-between"><span>활성 사용자</span><span id="stat-users"
-                            class="font-bold text-gray-800 dark:text-gray-200">-</span></div>
+            <div class="card p-8 bg-gradient-to-br from-[#00a495]/10 to-transparent border-none">
+                <h3 class="font-black text-xs uppercase text-[#00a495] mb-4">Wiki Status</h3>
+                <div class="space-y-4 text-xs font-bold text-gray-500">
+                    <div class="flex justify-between"><span>Total Docs</span><span id="stat-total">-</span></div>
+                    <div class="flex justify-between"><span>User Power</span><span class="text-green-500">Stable</span>
+                    </div>
                 </div>
             </div>
         </aside>
     </main>
 
-    <!-- 옵시디언 그래프 뷰 모달 -->
-    <div id="graphModal"
-        class="hidden fixed inset-0 bg-black/90 z-[150] flex items-center justify-center p-4 backdrop-blur-md">
-        <div
-            class="bg-white dark:bg-[#111111] w-full max-w-6xl h-[85vh] rounded-3xl overflow-hidden flex flex-col shadow-2xl relative">
-            <div class="p-6 border-b flex justify-between items-center bg-gray-50 dark:bg-white/5">
-                <div class="flex items-center gap-3">
-                    <div class="w-3 h-3 bg-[#00a495] rounded-full animate-ping"></div>
-                    <h3 class="font-black text-xl tracking-tight">KNOWLEDGE GRAPH</h3>
+    <!-- [신규] 개인 설정 모달 -->
+    <div id="settingsModal"
+        class="hidden fixed inset-0 bg-black/70 z-[200] flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="card p-10 rounded-[35px] shadow-2xl w-full max-w-sm">
+            <h3 class="text-2xl font-black mb-8 flex items-center gap-3"><i
+                    class="fa-solid fa-sliders text-[#00a495]"></i> 개인화 설정</h3>
+            <div class="space-y-8">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <div class="font-black text-sm">AI 어시스턴트 활성화</div>
+                        <div class="text-[10px] text-gray-400">요약, 추천, 자동 태깅 기능을 사용합니다.</div>
+                    </div>
+                    <label class="switch"><input type="checkbox" id="ai-toggle" checked
+                            onchange="toggleAISetting(this.checked)"><span class="slider"></span></label>
                 </div>
+                <div class="flex justify-between items-center">
+                    <div>
+                        <div class="font-black text-sm">다크모드 강제 고정</div>
+                        <div class="text-[10px] text-gray-400">시스템 설정과 무관하게 테마를 유지합니다.</div>
+                    </div>
+                    <label class="switch"><input type="checkbox" id="dark-toggle" onchange="toggleDarkMode()"><span
+                            class="slider"></span></label>
+                </div>
+            </div>
+            <button onclick="closeSettingsModal()"
+                class="w-full mt-10 py-4 bg-gray-100 dark:bg-white/5 rounded-2xl font-black text-xs uppercase tracking-widest transition-colors">Save
+                & Close</button>
+        </div>
+    </div>
+
+    <!-- 기존 모든 모달 (그래프, 인증, 역사, 업로드, 이동, 삭제) 포함 -->
+    <div id="graphModal"
+        class="hidden fixed inset-0 bg-black/95 z-[150] flex items-center justify-center p-4 backdrop-blur-lg">
+        <div
+            class="bg-white dark:bg-[#0f0f0f] w-full max-w-7xl h-[90vh] rounded-[40px] overflow-hidden flex flex-col border border-white/10 shadow-2xl">
+            <div class="p-8 border-b border-gray-100 dark:border-white/5 flex justify-between items-center">
+                <h3 class="font-black text-2xl tracking-tighter uppercase italic text-[#00a495]">Knowledge Network</h3>
                 <button onclick="document.getElementById('graphModal').classList.add('hidden')"
-                    class="text-3xl hover:text-red-500 transition-colors">&times;</button>
+                    class="text-4xl hover:text-red-500 transition-colors">&times;</button>
             </div>
             <div id="graph-canvas" class="flex-1"></div>
-            <div
-                class="absolute bottom-6 left-6 p-4 bg-black/20 backdrop-blur-md rounded-2xl text-[11px] text-white/70 border border-white/10 pointer-events-none">
-                <strong>그래프 가이드</strong><br>
-                • 스크롤: 확대/축소<br>
-                • 드래그: 시점 이동 / 노드 고정<br>
-                • 클릭: 해당 문서로 이동
-            </div>
         </div>
     </div>
 
-    <!-- 기타 모달창들 -->
     <div id="authModal"
-        class="hidden fixed inset-0 bg-black/80 z-[200] flex items-center justify-center p-4 backdrop-blur-sm">
-        <div class="card p-10 rounded-3xl shadow-2xl w-full max-w-sm">
-            <div class="text-center mb-8"><i class="fa-solid fa-dragon text-5xl text-[#00a495]"></i></div>
-            <h3 class="text-2xl font-black mb-8 text-center tracking-tighter italic">MIRRWIKI ARCHIVE</h3>
+        class="hidden fixed inset-0 bg-black/80 z-[200] flex items-center justify-center p-4 backdrop-blur-md">
+        <div class="card p-12 rounded-[40px] shadow-2xl w-full max-w-md">
+            <h3 class="text-3xl font-black mb-10 text-center tracking-tighter italic">MIRRWIKI ACCESS</h3>
             <input type="email" id="emailInput"
-                class="w-full border-2 p-4 rounded-xl mb-4 bg-transparent outline-none focus:border-[#00a495]"
-                placeholder="이메일">
+                class="w-full border-2 p-5 rounded-2xl mb-4 bg-transparent outline-none focus:border-[#00a495] font-bold"
+                placeholder="E-MAIL">
             <input type="password" id="passwordInput"
-                class="w-full border-2 p-4 rounded-xl mb-6 bg-transparent outline-none focus:border-[#00a495]"
-                placeholder="비밀번호">
+                class="w-full border-2 p-5 rounded-2xl mb-8 bg-transparent outline-none focus:border-[#00a495] font-bold"
+                placeholder="PASSWORD">
             <button onclick="handleLogin()"
-                class="w-full bg-[#00a495] text-white py-4 rounded-xl font-bold mb-3 shadow-lg">로그인</button>
+                class="w-full bg-[#00a495] text-white py-5 rounded-2xl font-black text-xl mb-4">SIGN IN</button>
             <button onclick="handleSignup()"
-                class="w-full border-2 border-[#00a495] text-[#00a495] py-4 rounded-xl font-bold">새로운 기여자 등록</button>
-            <button onclick="closeAuthModal()" class="w-full mt-6 text-gray-400 text-xs">닫기</button>
+                class="w-full border-2 border-[#00a495] text-[#00a495] py-5 rounded-2xl font-black text-xl">REGISTER</button>
+            <button onclick="closeAuthModal()"
+                class="w-full mt-6 text-gray-400 font-bold uppercase text-xs">Close</button>
         </div>
     </div>
 
-    <div id="historyModal" class="hidden fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4">
-        <div class="card p-8 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col">
-            <h3 class="text-2xl font-black mb-6 border-b pb-4 text-[#00a495]">편집 타임라인</h3>
-            <div class="overflow-y-auto flex-1 rounded-xl border border-gray-100 dark:border-white/10">
+    <div id="historyModal"
+        class="hidden fixed inset-0 bg-black/70 z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="card p-10 rounded-[30px] shadow-2xl w-full max-w-3xl max-h-[85vh] flex flex-col">
+            <h3 class="text-3xl font-black mb-8 border-b pb-6 text-[#00a495]">CHRONICLE</h3>
+            <div class="overflow-y-auto flex-1">
                 <table class="w-full text-sm text-left">
-                    <tbody id="historyList" class="divide-y"></tbody>
+                    <tbody id="historyList" class="divide-y divide-gray-100"></tbody>
                 </table>
             </div>
             <button onclick="document.getElementById('historyModal').classList.add('hidden')"
-                class="mt-6 py-4 bg-gray-100 dark:bg-white/5 rounded-xl font-bold">창 닫기</button>
+                class="mt-8 py-5 bg-gray-50 dark:bg-white/5 rounded-2xl font-black uppercase text-xs">Done</button>
+        </div>
+    </div>
+
+    <div id="newDocModal" class="hidden fixed inset-0 bg-black/70 z-[100] flex items-center justify-center p-4">
+        <div class="card p-10 rounded-[40px] shadow-2xl w-full max-w-lg">
+            <h3 class="text-2xl font-black mb-8">CREATE ARCHIVE</h3>
+            <input type="text" id="newDocTitleInput"
+                class="w-full border-2 p-5 rounded-2xl mb-8 bg-transparent outline-none focus:border-[#00a495] text-xl font-bold"
+                placeholder="TITLE">
+            <div class="flex justify-end gap-4"><button onclick="closeNewDocModal()"
+                    class="px-8 py-3 text-gray-500 font-black text-xs uppercase">Cancel</button><button
+                    onclick="createNewDoc()" class="namu-btn px-10">START</button></div>
         </div>
     </div>
 
     <div id="imageUploadModal" class="hidden fixed inset-0 bg-black/60 z-[110] flex items-center justify-center p-4">
-        <div class="card p-10 rounded-3xl w-full max-w-md">
-            <h3 class="text-2xl font-black mb-2 text-[#00a495]">이미지 데이터 각인</h3>
-            <p class="text-xs text-gray-400 mb-8 italic">* Firestore 최적화 인코딩 적용</p>
-            <div class="flex border-2 rounded-xl overflow-hidden mb-6 focus-within:border-[#00a495] transition-all">
-                <span class="bg-gray-100 dark:bg-white/10 px-5 py-4 text-xs font-black border-r">사진:</span><input
-                    type="text" id="imgTitleInput" class="w-full p-4 text-sm outline-none bg-transparent"
-                    placeholder="제목"></div>
-            <input type="file" id="imgFileInput" accept="image/*"
-                class="w-full text-sm mb-6 file:bg-[#00a495] file:text-white file:border-none file:px-4 file:py-2 file:rounded-lg">
-            <button onclick="submitImageUpload()" id="imgUploadBtn" class="namu-btn w-full py-5 text-lg">데이터 전송
-                시작</button>
-            <button onclick="closeImageUploadModal()" class="w-full mt-4 text-gray-400 text-xs">취소</button>
+        <div class="card p-10 rounded-[40px] w-full max-w-md border-t-8 border-[#00a495]">
+            <h3 class="text-2xl font-black mb-6">IMAGE ENGRAVING</h3>
+            <div class="flex border-2 rounded-2xl overflow-hidden mb-6"><span
+                    class="bg-gray-100 dark:bg-white/10 px-6 py-5 text-xs font-black border-r">IMG</span><input
+                    type="text" id="imgTitleInput" class="w-full p-4 font-bold outline-none bg-transparent"
+                    placeholder="NAME"></div>
+            <input type="file" id="imgFileInput" accept="image/*" class="w-full text-sm mb-8">
+            <button onclick="submitImageUpload()" id="imgUploadBtn"
+                class="namu-btn w-full py-5 text-xl justify-center font-black">EXECUTE UPLOAD</button>
         </div>
     </div>
 
     <div id="audioUploadModal" class="hidden fixed inset-0 bg-black/60 z-[110] flex items-center justify-center p-4">
-        <div class="card p-10 rounded-3xl w-full max-w-md">
-            <h3 class="text-2xl font-black mb-2 text-[#00a495]">오디오 데이터 각인</h3>
-            <p class="text-xs text-gray-400 mb-8 italic">* K-Base 4096 하이-덴시티 인코딩</p>
-            <div class="flex border-2 rounded-xl overflow-hidden mb-6 focus-within:border-[#00a495] transition-all">
-                <span class="bg-gray-100 dark:bg-white/10 px-5 py-4 text-xs font-black border-r">오디오:</span><input
-                    type="text" id="audioTitleInput" class="w-full p-4 text-sm outline-none bg-transparent"
-                    placeholder="제목"></div>
-            <input type="file" id="audioFileInput" accept="audio/*" class="w-full text-sm mb-6">
-            <button onclick="submitAudioUpload()" id="audioUploadBtn" class="namu-btn w-full py-5 text-lg">데이터 전송
-                시작</button>
+        <div class="card p-10 rounded-[40px] w-full max-w-md border-t-8 border-[#00a495]">
+            <h3 class="text-2xl font-black mb-6">AUDIO ENGRAVING</h3>
+            <div class="flex border-2 rounded-2xl overflow-hidden mb-6"><span
+                    class="bg-gray-100 dark:bg-white/10 px-6 py-5 text-xs font-black border-r">AUDIO</span><input
+                    type="text" id="audioTitleInput" class="w-full p-4 font-bold outline-none bg-transparent"
+                    placeholder="NAME"></div>
+            <input type="file" id="audioFileInput" accept="audio/*" class="w-full text-sm mb-8">
+            <button onclick="submitAudioUpload()" id="audioUploadBtn"
+                class="namu-btn w-full py-5 text-xl justify-center font-black">EXECUTE UPLOAD</button>
         </div>
     </div>
 
     <div id="deleteDocModal"
-        class="hidden fixed inset-0 bg-black/80 z-[120] flex items-center justify-center p-4 backdrop-blur-md">
-        <div class="card p-12 rounded-[40px] w-full max-w-md text-center border-t-[12px] border-red-500">
-            <h3 class="text-3xl font-black mb-4 text-red-500">지식의 말소</h3>
-            <p class="mb-10 text-sm text-gray-500 leading-relaxed font-medium">'<span id="deleteTargetTitle"
-                    class="font-extrabold text-black dark:text-white underline"></span>' 문서를 영구히 말소하시겠습니까?<br>이 작업은
-                아카이브에서 완전히 삭제됩니다.</p>
+        class="hidden fixed inset-0 bg-black/90 z-[130] flex items-center justify-center p-4 backdrop-blur-xl">
+        <div class="card p-14 rounded-[50px] w-full max-w-md text-center border-t-[15px] border-red-600">
+            <h3 class="text-3xl font-black mb-10 text-red-600 uppercase">Annihilation</h3>
+            <p class="mb-12 text-gray-500 font-bold">'<span id="deleteTargetTitle"
+                    class="text-black dark:text-white underline"></span>' 문서를 소멸시키겠습니까?</p>
             <div class="flex flex-col gap-4"><button onclick="submitDeleteDoc()"
-                    class="bg-red-600 text-white py-5 rounded-2xl font-black text-xl shadow-xl shadow-red-500/20">영구
-                    삭제</button><button onclick="closeDeleteModal()"
-                    class="py-2 text-gray-400 font-bold hover:text-gray-600 transition-colors">아니요, 보존할게요</button></div>
+                    class="bg-red-600 text-white py-6 rounded-3xl font-black text-2xl shadow-2xl shadow-red-600/30">CONFIRM</button><button
+                    onclick="closeDeleteModal()" class="py-2 text-gray-400 font-bold">ABORT</button></div>
         </div>
     </div>
 
     <div id="moveDocModal" class="hidden fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4">
-        <div class="card p-8 rounded-2xl w-full max-w-md">
-            <h3 class="text-xl font-black mb-6">제목 변경 (이동)</h3>
+        <div class="card p-10 rounded-[40px] w-full max-w-lg">
+            <h3 class="text-2xl font-black mb-8 uppercase">Teleport</h3>
             <input type="text" id="moveDocTitleInput"
-                class="w-full border-2 p-4 rounded-xl mb-6 bg-transparent outline-none focus:border-[#00a495]"
-                placeholder="바꿀 제목">
-            <div class="flex justify-end gap-3"><button onclick="closeMoveModal()"
-                    class="px-6 py-2 text-gray-500">취소</button><button onclick="submitMoveDoc()"
-                    class="namu-btn px-8">변경 실행</button></div>
+                class="w-full border-2 p-5 rounded-2xl mb-8 bg-transparent outline-none focus:border-[#00a495] font-bold"
+                placeholder="NEW TITLE">
+            <div class="flex justify-end gap-4"><button onclick="closeMoveModal()"
+                    class="px-6 py-2 text-gray-500 font-black">Abort</button><button onclick="submitMoveDoc()"
+                    class="namu-btn px-10">MOVE</button></div>
         </div>
     </div>
 
-    <!-- UI 오버레이 -->
     <div id="fnPopover" class="fn-popover">
         <div id="fnPopoverContent"></div>
     </div>
     <div id="toast"
-        class="fixed bottom-8 right-8 bg-gray-900 text-white px-8 py-4 rounded-2xl shadow-2xl transform translate-y-40 transition-transform duration-500 z-[300] border border-white/10 flex items-center gap-4">
+        class="fixed bottom-10 right-10 bg-gray-950 text-white px-10 py-5 rounded-2xl shadow-2xl transform translate-y-48 transition-transform duration-500 z-[300] border border-white/20 flex items-center gap-5 font-black text-sm italic tracking-widest">
     </div>
 
     <script type="module" src="/script.js"></script>
