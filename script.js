@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
-import { getFirestore, collection, doc, getDocs, getDoc, setDoc, addDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
+import { getFirestore, collection, collectionGroup, doc, getDocs, getDoc, setDoc, addDoc, updateDoc, deleteDoc, onSnapshot, query, where, orderBy, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 
 // --- Firebase Configuration ---
 const firebaseConfig = {
@@ -132,13 +132,36 @@ async function fetchDocument(pageId) {
     }
 }
 
+// [교체] 마크다운 렌더링 및 ID 부여 (목차 이동 문제 해결의 핵심)
 async function renderContent(raw) {
     let text = raw;
+    // [[링크]] 처리
     text = text.replace(/\[\[([^\]]+)\]\]/g, (_, t) => `<a href="#" onclick="router('${t}')">${t}</a>`);
+    // 각주 처리
     let fnIdx = 0;
     text = text.replace(/\[\*\s(.*?)]/g, (_, c) => `<sup class="wiki-fn" onclick="toggleFootnote(this, '${encodeURIComponent(c)}')">[${++fnIdx}]</sup>`);
-    document.getElementById('viewMode').innerHTML = marked.parse(text);
-    if (window.renderMathInElement) renderMathInElement(document.getElementById('viewMode'), { delimiters: [{ left: '$$', right: '$$', display: true }, { left: '$', right: '$', display: false }] });
+
+    // 1. HTML로 변환
+    const view = document.getElementById('viewMode');
+    view.innerHTML = marked.parse(text);
+
+    // 2. [수정됨] 헤더에 ID 강제 부여 (목차 이동을 위해 필수)
+    const headers = view.querySelectorAll('h1, h2, h3');
+    headers.forEach((h, index) => {
+        h.id = `wiki-header-${index}`; // 예: id="wiki-header-0"
+    });
+
+    // 3. 수식 렌더링
+    if (window.renderMathInElement) renderMathInElement(view, { delimiters: [{ left: '$$', right: '$$', display: true }, { left: '$', right: '$', display: false }] });
+
+    // 4. 목차 생성 호출
+    generateFloatingTOC();
+
+    // 5. 기타 기능 호출 (기존 코드 유지)
+    updateDocStats(raw);
+    loadBacklinks(currentDocId);
+    initLinkPreview();
+    updateDynamicFavicon();
 }
 
 // ==========================================
@@ -303,18 +326,41 @@ window.toggleAISetting = (enabled) => {
 };
 
 // --- CRUD 및 기타 (생략 없음) ---
+// [교체] 문서 저장 시 'outgoingLinks' 필드를 함께 저장하도록 업그레이드
 window.saveDocument = async () => {
     if (!currentUser) return window.openAuthModal();
     const content = document.getElementById('editorContent').value;
     const btn = document.getElementById('saveBtn');
-    btn.disabled = true;
+
+    // [추가] 퀘스트 진행도 체크
+    checkQuestProgress(currentDocId, content.length);
+
+    btn.disabled = true; btn.innerText = "분석 및 저장 중...";
+
     try {
-        await setDoc(doc(getWikiCollection(), currentDocId), { title: currentDocId, content, updatedAt: serverTimestamp(), updatedBy: currentUser.uid, isLocked: currentDocIsLocked });
-        await addDoc(getHistoryCollection(currentDocId), { action: "ENGRAVED", editor: currentUser.email, timestamp: serverTimestamp() });
-        window.showToast("지식이 안전하게 보존되었습니다.");
+        // [[링크]] 추출 로직
+        const linkRegex = /\[\[([^\]:]+)\]\]/g;
+        const links = [];
+        let match;
+        while ((match = linkRegex.exec(content)) !== null) {
+            links.push(match[1]);
+        }
+        const uniqueLinks = [...new Set(links)]; // 중복 제거
+
+        await setDoc(doc(getWikiCollection(), currentDocId), {
+            title: currentDocId,
+            content,
+            updatedAt: serverTimestamp(),
+            updatedBy: currentUser.uid,
+            isLocked: currentDocIsLocked,
+            outgoingLinks: uniqueLinks // [핵심] 역링크 구현을 위한 참조 데이터 저장
+        });
+        await addDoc(getHistoryCollection(currentDocId), { action: "MODIFIED", editor: currentUser.email, timestamp: serverTimestamp() });
+
+        window.showToast("지식과 연결 고리가 보존되었습니다.");
         fetchDocument(currentDocId);
-    } catch (e) { alert("권한 거부"); }
-    finally { btn.disabled = false; }
+    } catch (e) { alert("저장 권한이 부족합니다."); }
+    finally { btn.disabled = false; btn.innerText = "보존하기"; }
 };
 
 window.submitDeleteDoc = async () => {
@@ -381,8 +427,14 @@ onAuthStateChanged(auth, user => {
     currentUser = user;
     const authSec = document.getElementById('desktopAuthSection');
     if (user) {
-        authSec.innerHTML = `<button onclick="handleLogout()" class="bg-[#008b7d] px-5 py-1.5 rounded-full text-white font-black text-[11px] border-2 border-white/20 uppercase tracking-tighter">${user.email.split('@')[0]}</button>`;
+        // [수정] onAuthStateChanged 내부의 if(user) 블록
+        // 기존 버튼 대신 프로필 클릭 버튼으로 교체
+        authSec.innerHTML = `<button onclick="openProfileModal()" class="bg-[#00a495] px-4 py-1 rounded-full text-white font-black text-[11px] uppercase border-2 border-white/20 flex items-center gap-2">
+            ${user.email.split('@')[0]} <i class="fa-solid fa-crown user-crown"></i>
+        </button>`;
         document.getElementById('mobileAuthItem').innerText = `SIGN OUT (${user.email.split('@')[0]})`;
+
+        initDailyQuest(); // [추가] 퀘스트 초기화 호출
     } else {
         authSec.innerHTML = `<button onclick="openAuthModal()" class="text-[11px] font-black border-2 border-white px-5 py-1.5 rounded-full uppercase tracking-widest hover:bg-white hover:text-[#00a495] transition-all">Archive Access</button>`;
         document.getElementById('mobileAuthItem').innerText = "LOGIN / REGISTER";
@@ -409,12 +461,17 @@ function loadRecentChanges() {
 }
 
 async function loadAllTitles() {
-    try { const s = await getDocs(query(getWikiCollection())); allDocTitles = s.docs.map(d => d.id); } catch (e) { }
+    try {
+        const s = await getDocs(query(getWikiCollection()));
+        allDocTitles = s.docs.map(d => d.id);
+        initDailyQuest(); // [추가] 목록 로드 후 퀘스트 타겟 설정
+    } catch (e) { }
 }
 
 function renderToolbar() {
     const bar = document.getElementById('toolbarButtons');
     bar.innerHTML = `
+        <button onclick="toggleZenMode()" class="text-[10px] border px-2 py-1 rounded-lg" title="집중 모드"><i class="fa-solid fa-expand"></i></button>
         <button onclick="openHistoryModal()" class="text-[10px] font-black border-2 px-4 py-2 rounded-xl hover:bg-gray-100 transition-all">HISTORY</button>
         <button onclick="toggleEdit()" class="text-[10px] font-black border-2 px-4 py-2 rounded-xl hover:bg-gray-100 transition-all">EDIT</button>
         <button onclick="openMoveModal()" class="text-[10px] border-2 px-2 py-2 rounded-xl"><i class="fa-solid fa-arrows-spin"></i></button>
@@ -493,4 +550,284 @@ window.toggleFootnote = (el, enc) => {
     document.getElementById('fnPopoverContent').innerHTML = marked.parse(decodeURIComponent(enc));
     pop.style.display = 'block'; const rect = el.getBoundingClientRect();
     pop.style.top = (rect.bottom + window.scrollY + 8) + 'px'; pop.style.left = Math.min(rect.left, window.innerWidth - 320) + 'px';
+};
+
+// ==========================================
+// [신규 기능 1] 링크 미리보기 (Hover Preview)
+// ==========================================
+const previewCache = {}; // 미리보기 데이터 캐싱
+
+window.initLinkPreview = () => {
+    const links = document.querySelectorAll('#viewMode a[onclick^="router"]');
+    const popup = document.getElementById('link-preview');
+
+    links.forEach(link => {
+        link.addEventListener('mouseenter', async (e) => {
+            const title = link.innerText;
+            // 좌표 계산
+            const rect = link.getBoundingClientRect();
+            popup.style.left = `${rect.left}px`;
+            popup.style.top = `${rect.bottom + 10}px`;
+            popup.innerHTML = `<h4 class="animate-pulse">로딩 중...</h4>`;
+            popup.classList.add('show');
+
+            if (previewCache[title]) {
+                popup.innerHTML = `<h4>${title}</h4><p>${previewCache[title]}</p>`;
+            } else {
+                try {
+                    const snap = await getDoc(doc(getWikiCollection(), title));
+                    if (snap.exists()) {
+                        const txt = snap.data().content.replace(/[#*`\[\]]/g, '').substring(0, 150) + "...";
+                        previewCache[title] = txt;
+                        popup.innerHTML = `<h4>${title}</h4><p>${txt}</p>`;
+                    } else {
+                        popup.innerHTML = `<h4>${title}</h4><p class="text-gray-400">아직 작성되지 않은 문서입니다.</p>`;
+                    }
+                } catch (err) { popup.classList.remove('show'); }
+            }
+        });
+
+        link.addEventListener('mouseleave', () => {
+            popup.classList.remove('show');
+        });
+    });
+};
+
+// [교체] DOM 기반 목차 생성 (이제 클릭하면 진짜로 이동함)
+window.generateFloatingTOC = () => {
+    const tocContainer = document.getElementById('floating-toc');
+    const headers = document.querySelectorAll('#viewMode h1, #viewMode h2, #viewMode h3');
+
+    if (headers.length < 2) {
+        tocContainer.style.display = 'none';
+        return;
+    }
+
+    let tocHtml = `<div class="toc-title"><i class="fa-solid fa-list-ul"></i> 목차</div>`;
+
+    headers.forEach((h) => {
+        // 태그 이름(H1, H2..)에 따라 클래스 다르게 적용
+        const level = h.tagName.toLowerCase();
+        const title = h.innerText;
+        // 위에서 부여한 ID로 링크 연결
+        tocHtml += `<a href="#${h.id}" class="toc-${level}" onclick="event.preventDefault(); document.getElementById('${h.id}').scrollIntoView({behavior: 'smooth', block: 'center'});">${title}</a>`;
+    });
+
+    tocContainer.innerHTML = tocHtml;
+    tocContainer.style.display = 'block';
+};
+
+// 헤더 스크롤 헬퍼 (마크다운 렌더링 방식에 따라 h 태그 찾기)
+window.scrollToHeader = (txt) => {
+    const headers = document.querySelectorAll('h1, h2, h3');
+    for (let h of headers) {
+        if (h.innerText.includes(txt)) {
+            h.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            break;
+        }
+    }
+};
+
+// ==========================================
+// [신규 기능 3] 역링크 (Backlinks)
+// ==========================================
+window.loadBacklinks = async (currentTitle) => {
+    const container = document.getElementById('backlinks-section');
+    const list = document.getElementById('backlinks-list');
+
+    // 'outgoingLinks' 배열에 현재 제목이 포함된 문서를 찾음
+    try {
+        const q = query(getWikiCollection(), where("outgoingLinks", "array-contains", currentTitle), limit(10));
+        const snap = await getDocs(q);
+
+        if (!snap.empty) {
+            list.innerHTML = snap.docs.map(d => `<span class="backlink-item" onclick="router('${d.id}')"><i class="fa-solid fa-link"></i> ${d.id}</span>`).join('');
+            container.classList.remove('hidden');
+        } else {
+            container.classList.add('hidden');
+        }
+    } catch (e) {
+        // 기존 문서들은 outgoingLinks 필드가 없을 수 있으므로 에러 무시
+        console.log("Backlink query skipped (requires index or new save)");
+        container.classList.add('hidden');
+    }
+};
+
+// ==========================================
+// [신규 기능 4] 문서 정보 배지 & 파비콘
+// ==========================================
+window.updateDocStats = (text) => {
+    const badges = document.getElementById('doc-badges');
+    const charCount = text.length;
+    const readTime = Math.ceil(charCount / 500); // 분당 500자 읽기 기준
+    const hasImg = text.includes('[[사진:');
+    const hasAudio = text.includes('[[오디오:');
+
+    badges.innerHTML = `
+        <span class="doc-badge"><i class="fa-solid fa-text-height"></i> ${charCount.toLocaleString()}자</span>
+        <span class="doc-badge"><i class="fa-regular fa-clock"></i> 약 ${readTime}분</span>
+        ${hasImg ? '<span class="doc-badge text-blue-500"><i class="fa-solid fa-image"></i> 이미지</span>' : ''}
+        ${hasAudio ? '<span class="doc-badge text-purple-500"><i class="fa-solid fa-music"></i> 오디오</span>' : ''}
+    `;
+};
+
+window.updateDynamicFavicon = () => {
+    const link = document.querySelector("link[rel~='icon']");
+    if (document.body.classList.contains('dark-mode')) {
+        // 다크모드일 땐 로고 필터링 (예: 밝게) 혹은 다른 이미지
+        // 여기서는 간단히 href를 유지하되, 필요시 교체 가능
+        // link.href = '/logo-dark.png'; 
+    } else {
+        link.href = '/logo.png';
+    }
+};
+
+// ==========================================
+// [신규 기능] 집중 모드 (Zen Mode)
+// ==========================================
+window.toggleZenMode = () => {
+    document.body.classList.toggle('zen-mode');
+    const isZen = document.body.classList.contains('zen-mode');
+    if (isZen) {
+        window.showToast("집중 모드가 켜졌습니다. (ESC로 종료)");
+    }
+};
+
+// 단축키 (ESC) 지원
+document.addEventListener('keydown', (e) => {
+    if (e.key === "Escape" && document.body.classList.contains('zen-mode')) {
+        toggleZenMode();
+    }
+});
+
+
+
+// ==========================================
+// [신규 기능] 일일 퀘스트 시스템 (Daily Quest)
+// ==========================================
+let dailyQuest = { targetDoc: "", currentLen: 0, targetLen: 50, completed: false };
+
+function initDailyQuest() {
+    // 오늘 날짜를 시드(Seed)로 사용하여 매일 같은 문서가 선정되도록 함
+    const today = new Date().toDateString();
+    const savedQuest = JSON.parse(localStorage.getItem('mirr-quest'));
+
+    // 이미 오늘 퀘스트 데이터가 있으면 로드
+    if (savedQuest && savedQuest.date === today) {
+        dailyQuest = savedQuest.data;
+    } else {
+        // 새로운 퀘스트 생성 (문서 목록이 로드된 후 실행)
+        if (allDocTitles.length > 0) {
+            // 날짜 기반 랜덤 인덱스 생성
+            const seed = new Date().getDate() + new Date().getMonth();
+            const target = allDocTitles[seed % allDocTitles.length];
+            dailyQuest = { targetDoc: target, currentLen: 0, targetLen: 50, completed: false };
+            localStorage.setItem('mirr-quest', JSON.stringify({ date: today, data: dailyQuest }));
+        }
+    }
+    updateQuestUI();
+}
+
+function updateQuestUI() {
+    const widget = document.getElementById('daily-quest-widget');
+    if (!currentUser || !dailyQuest.targetDoc) {
+        widget.classList.add('hidden');
+        return;
+    }
+
+    widget.classList.remove('hidden');
+    const desc = document.getElementById('quest-desc');
+    const bar = document.getElementById('quest-bar');
+    const status = document.getElementById('quest-status');
+
+    if (dailyQuest.completed) {
+        desc.innerHTML = `<span class="text-[#00a495]"><i class="fa-solid fa-crown"></i> 퀘스트 완료!</span>`;
+        bar.style.width = "100%";
+        bar.style.backgroundColor = "gold";
+        status.innerText = "보상: 명예로운 뱃지 획득";
+        // 뱃지 표시 로직
+        document.querySelectorAll('.user-crown').forEach(el => el.style.display = 'inline-block');
+    } else {
+        desc.innerHTML = `'<span class="text-[#00a495]">${dailyQuest.targetDoc}</span>' 문서 기여하기`;
+        const percent = Math.min((dailyQuest.currentLen / dailyQuest.targetLen) * 100, 100);
+        bar.style.width = `${percent}%`;
+        status.innerText = `${dailyQuest.currentLen} / ${dailyQuest.targetLen} 자 작성됨`;
+    }
+}
+
+function checkQuestProgress(docTitle, contentLen) {
+    if (dailyQuest.completed) return;
+    if (docTitle === dailyQuest.targetDoc) {
+        // 단순히 길이만 체크 (실제로는 diff를 체크해야 하지만 간소화)
+        dailyQuest.currentLen = contentLen;
+        if (dailyQuest.currentLen >= dailyQuest.targetLen) {
+            dailyQuest.completed = true;
+            window.showToast("👑 일일 퀘스트 완료! 뱃지를 획득했습니다!");
+        }
+        // 저장
+        const today = new Date().toDateString();
+        localStorage.setItem('mirr-quest', JSON.stringify({ date: today, data: dailyQuest }));
+        updateQuestUI();
+    }
+}
+
+// ==========================================
+// [신규 기능] 기여 히트맵 (Contribution Graph)
+// ==========================================
+window.openProfileModal = async () => {
+    if (!currentUser) return window.openAuthModal();
+
+    const modal = document.getElementById('profileModal');
+    modal.classList.remove('hidden');
+    document.getElementById('profile-name').innerText = currentUser.email.split('@')[0];
+    document.getElementById('profile-initial').innerText = currentUser.email[0].toUpperCase();
+
+    const heatmap = document.getElementById('contribution-heatmap');
+    heatmap.innerHTML = '<div class="text-center w-full col-span-10 py-10 text-gray-400">데이터 수집 중... (색인이 필요할 수 있음)</div>';
+
+    try {
+        // 1년치 데이터 생성 (빈 잔디)
+        const contributions = {};
+        const today = new Date();
+        for (let i = 0; i < 365; i++) {
+            const d = new Date();
+            d.setDate(today.getDate() - i);
+            contributions[d.toISOString().split('T')[0]] = 0;
+        }
+
+        // Firestore 컬렉션 그룹 쿼리 (모든 history 컬렉션 검색)
+        const q = query(collectionGroup(db, 'history'), where('editor', '==', currentUser.email));
+        const snap = await getDocs(q);
+
+        snap.forEach(doc => {
+            const data = doc.data();
+            if (data.timestamp) {
+                const date = data.timestamp.toDate().toISOString().split('T')[0];
+                if (contributions[date] !== undefined) contributions[date]++;
+            }
+        });
+
+        // 렌더링
+        heatmap.innerHTML = '';
+        // 52주 x 7일 그리드로 정렬하려면 날짜 순서 뒤집기 필요
+        const dates = Object.keys(contributions).sort(); // 오래된 순
+
+        dates.forEach(date => {
+            const count = contributions[date];
+            const div = document.createElement('div');
+            div.className = 'heatmap-day';
+            div.title = `${date}: ${count} contributions`;
+
+            if (count >= 10) div.classList.add('heatmap-level-4');
+            else if (count >= 5) div.classList.add('heatmap-level-3');
+            else if (count >= 3) div.classList.add('heatmap-level-2');
+            else if (count >= 1) div.classList.add('heatmap-level-1');
+
+            heatmap.appendChild(div);
+        });
+
+    } catch (e) {
+        console.error(e);
+        heatmap.innerHTML = `<div class="text-red-500 text-xs p-4">데이터를 불러오지 못했습니다.<br>관리자에게 '컬렉션 그룹 색인' 생성을 요청하세요.<br><br>Error: ${e.message}</div>`;
+    }
 };

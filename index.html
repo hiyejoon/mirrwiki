@@ -233,6 +233,305 @@
             cursor: pointer;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
         }
+
+        /* [추가] 링크 미리보기 팝업 */
+        .link-preview-popup {
+            position: fixed;
+            z-index: 1000;
+            background: var(--bg-card);
+            border: 1px solid var(--wiki-primary);
+            border-radius: 12px;
+            padding: 15px;
+            width: 320px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            display: none;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .link-preview-popup.show {
+            display: block;
+            opacity: 1;
+        }
+
+        .link-preview-popup h4 {
+            color: var(--wiki-primary);
+            font-weight: 800;
+            margin-bottom: 8px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 5px;
+        }
+
+        .link-preview-popup p {
+            font-size: 0.8rem;
+            line-height: 1.5;
+            color: var(--text-main);
+            display: -webkit-box;
+            -webkit-line-clamp: 4;
+            margin: 0;
+        }
+
+        /* [교체] Floating TOC (더 자연스러운 디자인) */
+        .floating-toc {
+            position: fixed;
+            /* 절대 위치 대신 고정 위치 사용 */
+            top: 120px;
+            right: 20px;
+            width: 240px;
+            max-height: calc(100vh - 150px);
+            overflow-y: auto;
+            background: rgba(255, 255, 255, 0.8);
+            /* 반투명 */
+            backdrop-filter: blur(10px);
+            /* 유리 효과 */
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 15px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            display: none;
+            /* JS로 제어 */
+            z-index: 50;
+            transition: all 0.3s;
+        }
+
+        .dark-mode .floating-toc {
+            background: rgba(30, 30, 30, 0.8);
+            border-color: #444;
+        }
+
+        /* 목차 내부 링크 스타일 */
+        .floating-toc .toc-title {
+            font-weight: 800;
+            margin-bottom: 10px;
+            color: var(--wiki-primary);
+            font-size: 0.85rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 5px;
+        }
+
+        .floating-toc a {
+            display: block;
+            text-decoration: none;
+            color: var(--text-main);
+            font-size: 0.8rem;
+            padding: 4px 0;
+            transition: 0.2s;
+            opacity: 0.7;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .floating-toc a:hover {
+            opacity: 1;
+            color: var(--wiki-primary);
+            transform: translateX(3px);
+        }
+
+        .floating-toc .toc-h1 {
+            font-weight: 700;
+        }
+
+        .floating-toc .toc-h2 {
+            padding-left: 12px;
+            border-left: 2px solid transparent;
+        }
+
+        .floating-toc .toc-h2:hover {
+            border-left-color: var(--wiki-primary);
+        }
+
+        .floating-toc .toc-h3 {
+            padding-left: 24px;
+        }
+
+        /* 모바일에서는 숨김 */
+        @media (max-width: 1280px) {
+            .floating-toc {
+                display: none !important;
+            }
+        }
+
+        /* [추가] 문서 배지 및 역링크 */
+        .doc-badges {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .doc-badge {
+            font-size: 0.75rem;
+            padding: 2px 8px;
+            border-radius: 6px;
+            background: rgba(0, 0, 0, 0.05);
+            color: #666;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .dark-mode .doc-badge {
+            background: rgba(255, 255, 255, 0.1);
+            color: #aaa;
+        }
+
+        #backlinks-section {
+            margin-top: 3rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .backlink-item {
+            display: inline-block;
+            margin-right: 8px;
+            margin-bottom: 8px;
+            font-size: 0.85rem;
+            padding: 4px 10px;
+            background: var(--bg-body);
+            border-radius: 20px;
+            color: var(--text-main);
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .backlink-item:hover {
+            background: var(--wiki-primary);
+            color: white;
+        }
+
+        /* [추가] 집중 모드 스타일 */
+        body.zen-mode nav,
+        body.zen-mode .sidebar,
+        body.zen-mode #toolbarButtons,
+        body.zen-mode #floating-toc {
+            display: none !important;
+        }
+
+        body.zen-mode main {
+            grid-template-columns: 1fr;
+            /* 1컬럼으로 변경 */
+            max-width: 800px;
+            /* 읽기 좋은 폭으로 제한 */
+            margin: 0 auto;
+        }
+
+        body.zen-mode .card {
+            border: none;
+            box-shadow: none;
+            background: transparent;
+        }
+
+        /* 집중 모드 탈출 버튼 */
+        #zen-exit-btn {
+            position: fixed;
+            bottom: 30px;
+            left: 30px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 30px;
+            cursor: pointer;
+            z-index: 200;
+            display: none;
+            font-size: 0.9rem;
+            font-weight: bold;
+            backdrop-filter: blur(5px);
+        }
+
+        body.zen-mode #zen-exit-btn {
+            display: block;
+        }
+
+        /* [추가] 일일 퀘스트 위젯 */
+        .quest-box {
+            background: linear-gradient(135deg, #fff, #f0fdfa);
+            border: 2px solid #00a495;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 20px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0, 164, 149, 0.1);
+        }
+
+        .dark-mode .quest-box {
+            background: linear-gradient(135deg, #1a1a1a, #112);
+            border-color: #008b7d;
+        }
+
+        .quest-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            font-size: 3rem;
+            opacity: 0.1;
+            transform: rotate(15deg);
+        }
+
+        .quest-progress {
+            height: 6px;
+            background: #eee;
+            border-radius: 3px;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+
+        .quest-bar {
+            height: 100%;
+            background: #00a495;
+            width: 0%;
+            transition: width 0.5s;
+        }
+
+        /* [추가] 기여 히트맵 (잔디) */
+        .heatmap-container {
+            display: grid;
+            grid-template-rows: repeat(7, 12px);
+            grid-auto-flow: column;
+            gap: 3px;
+            overflow-x: auto;
+            padding-bottom: 10px;
+        }
+
+        .heatmap-day {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+            background-color: #ebedf0;
+        }
+
+        .dark-mode .heatmap-day {
+            background-color: #2d333b;
+        }
+
+        /* 잔디 색상 단계 */
+        .heatmap-level-1 {
+            background-color: #9be9a8;
+        }
+
+        /* 조금 기여 */
+        .heatmap-level-2 {
+            background-color: #40c463;
+        }
+
+        .heatmap-level-3 {
+            background-color: #30a14e;
+        }
+
+        .heatmap-level-4 {
+            background-color: #216e39;
+        }
+
+        /* 많이 기여 */
+        .user-crown {
+            color: gold;
+            text-shadow: 0 0 5px rgba(255, 215, 0, 0.5);
+            margin-left: 4px;
+            display: none;
+        }
     </style>
 </head>
 
@@ -297,6 +596,7 @@
                             class="fa-solid fa-link mr-1"></i> 공유</button>
                 </div>
             </header>
+            <div id="doc-badges" class="doc-badges"></div>
 
             <!-- AI 3단계: 자동 태그 (Step 3) -->
             <div id="ai-tags-box"></div>
@@ -313,6 +613,13 @@
             </section>
 
             <article id="viewMode" class="wiki-content break-words"></article>
+            <div id="link-preview" class="link-preview-popup"></div>
+            <div id="floating-toc" class="floating-toc"></div>
+            <section id="backlinks-section" class="hidden">
+                <h4 class="font-bold text-sm mb-3 text-gray-400 uppercase tracking-widest"><i
+                        class="fa-solid fa-link"></i> Backlinks (이 문서를 언급함)</h4>
+                <div id="backlinks-list"></div>
+            </section>
 
             <!-- AI 1단계: 추천 (Step 1) -->
             <section id="ai-recs" class="hidden mt-24 border-t-2 pt-12 border-dashed border-gray-200">
@@ -337,6 +644,17 @@
         </div>
 
         <aside class="sidebar md:col-span-1 space-y-10">
+            <!-- [추가] 사이드바 맨 위에 넣을 퀘스트 위젯 -->
+            <div id="daily-quest-widget" class="quest-box hidden">
+                <i class="fa-solid fa-scroll quest-badge text-[#00a495]"></i>
+                <h4 class="font-black text-sm text-[#00a495] uppercase mb-1">Daily Quest</h4>
+                <p id="quest-desc" class="text-xs font-bold text-gray-700 dark:text-gray-300">로딩 중...</p>
+                <div class="quest-progress">
+                    <div id="quest-bar" class="quest-bar"></div>
+                </div>
+                <div id="quest-status" class="text-[10px] text-gray-400 text-right mt-1">0 / 50 자</div>
+            </div>
+
             <div class="card rounded-3xl shadow-2xl overflow-hidden border-none">
                 <div
                     class="bg-[#00a495] text-white px-6 py-4 font-black flex justify-between items-center text-xs tracking-widest uppercase">
@@ -495,11 +813,51 @@
         </div>
     </div>
 
+    <!-- [추가] 사용자 프로필 모달 (히트맵 포함) -->
+    <div id="profileModal"
+        class="hidden fixed inset-0 bg-black/80 z-[250] flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="card p-8 rounded-[30px] shadow-2xl w-full max-w-2xl bg-white dark:bg-[#0d1117]">
+            <div class="flex justify-between items-center mb-6 border-b pb-4 dark:border-gray-700">
+                <div class="flex items-center gap-4">
+                    <div
+                        class="w-16 h-16 bg-[#00a495] rounded-full flex items-center justify-center text-2xl text-white font-black">
+                        <span id="profile-initial">U</span>
+                    </div>
+                    <div>
+                        <h3 id="profile-name" class="text-2xl font-black">User</h3>
+                        <p class="text-xs text-gray-500">Contribution Activity</p>
+                    </div>
+                </div>
+                <button onclick="document.getElementById('profileModal').classList.add('hidden')"
+                    class="text-2xl text-gray-400 hover:text-white">&times;</button>
+            </div>
+
+            <!-- 잔디 심기 영역 -->
+            <h4 class="text-xs font-bold text-gray-400 mb-2">LAST 365 DAYS</h4>
+            <div id="contribution-heatmap" class="heatmap-container"></div>
+
+            <div class="flex justify-end gap-2 items-center text-[10px] text-gray-400 mt-2">
+                <span>Less</span>
+                <div class="w-3 h-3 bg-[#ebedf0] dark:bg-[#2d333b] rounded"></div>
+                <div class="w-3 h-3 bg-[#9be9a8] rounded"></div>
+                <div class="w-3 h-3 bg-[#40c463] rounded"></div>
+                <div class="w-3 h-3 bg-[#30a14e] rounded"></div>
+                <div class="w-3 h-3 bg-[#216e39] rounded"></div>
+                <span>More</span>
+            </div>
+        </div>
+    </div>
+
     <div id="fnPopover" class="fn-popover">
         <div id="fnPopoverContent"></div>
     </div>
     <div id="toast"
         class="fixed bottom-10 right-10 bg-gray-950 text-white px-10 py-5 rounded-2xl shadow-2xl transform translate-y-48 transition-transform duration-500 z-[300] border border-white/20 flex items-center gap-5 font-black text-sm italic tracking-widest">
+    </div>
+
+    <!-- 집중 모드 탈출 버튼 -->
+    <div id="zen-exit-btn" onclick="toggleZenMode()">
+        <i class="fa-solid fa-compress"></i> 집중 모드 종료
     </div>
 
     <script type="module" src="/script.js"></script>
