@@ -114,11 +114,14 @@ async function fetchDocument(pageId) {
                 // QoL: 읽기 시간 계산
                 calculateReadingTime(data.content);
 
-                // AI 기능 On/Off 체크 후 실행
-                if (localStorage.getItem('ai-enabled') !== 'false' && data.content.length > 50) {
+                // [수정] 모바일 안정성: 화면 너비가 좁은 경우(모바일) 무거운 AI 엔진 기반 기능은 건너뜀 (메모리 절약 및 튕김 방지)
+                const isMobile = window.innerWidth <= 768;
+                if (localStorage.getItem('ai-enabled') !== 'false' && data.content.length > 50 && !isMobile) {
                     suggestAI(data.content);
                     generateSummaryAI(data.content);
-                    generateAutoTagsAI(data.content); // [AI 3단계 준비]
+                    generateAutoTagsAI(data.content);
+                } else if (isMobile) {
+                    console.log("Mobile device detected: Skipping memory-heavy AI processes for stability.");
                 }
             }
             document.getElementById('lastUpdated').innerText = `Archived: ${data.updatedAt?.toDate().toLocaleString() || '-'}`;
@@ -470,21 +473,95 @@ async function loadAllTitles() {
 
 function renderToolbar() {
     const bar = document.getElementById('toolbarButtons');
+    // 모바일에선 아이콘만, PC에선 텍스트도 함께 표시
+    const isMobile = window.innerWidth <= 768;
+
+    // 버튼 템플릿 헬퍼
+    const btn = (onclick, icon, text, extraClass = "") => `
+        <button onclick="${onclick}" class="text-[10px] font-black border-2 px-3 py-2 rounded-xl hover:bg-gray-100 transition-all ${extraClass}">
+            <i class="${icon}"></i><span class="btn-text ml-1 md:inline">${text}</span>
+        </button>
+    `;
+
     bar.innerHTML = `
-        <button onclick="toggleZenMode()" class="text-[10px] border px-2 py-1 rounded-lg" title="집중 모드"><i class="fa-solid fa-expand"></i></button>
-        <button onclick="openHistoryModal()" class="text-[10px] font-black border-2 px-4 py-2 rounded-xl hover:bg-gray-100 transition-all">HISTORY</button>
-        <button onclick="toggleEdit()" class="text-[10px] font-black border-2 px-4 py-2 rounded-xl hover:bg-gray-100 transition-all">EDIT</button>
-        <button onclick="openMoveModal()" class="text-[10px] border-2 px-2 py-2 rounded-xl"><i class="fa-solid fa-arrows-spin"></i></button>
-        <button onclick="openDeleteModal()" class="text-[10px] border-2 px-2 py-2 rounded-xl text-red-500 border-red-100 hover:bg-red-50"><i class="fa-solid fa-trash-can"></i></button>
+        <button onclick="toggleZenMode()" class="text-[10px] border px-3 py-2 rounded-lg" title="집중 모드"><i class="fa-solid fa-expand"></i></button>
+        ${btn("openHistoryModal()", "fa-solid fa-clock-rotate-left", "HISTORY")}
+        ${btn("toggleEdit()", "fa-solid fa-pen-to-square", "EDIT")}
+        <button onclick="openMoveModal()" class="text-[10px] border-2 px-3 py-2 rounded-xl"><i class="fa-solid fa-arrows-spin"></i></button>
+        <button onclick="openDeleteModal()" class="text-[10px] border-2 px-3 py-2 rounded-xl text-red-500 border-red-100 hover:bg-red-50"><i class="fa-solid fa-trash-can"></i></button>
     `;
 }
 
 // UI Helpers (All Binding Window)
 window.handleSearch = () => { const v = document.getElementById('searchInput').value.trim(); if (v) { window.router(v); document.getElementById('searchInput').value = ''; } };
 window.handleRandom = () => { if (allDocTitles.length) window.router(allDocTitles[Math.floor(Math.random() * allDocTitles.length)]); };
-window.showAllDocuments = () => {
-    document.getElementById('docTitle').innerText = "Inventory of Knowledge";
-    document.getElementById('viewMode').innerHTML = `<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">${allDocTitles.sort().map(t => `<div class="p-5 card cursor-pointer hover:border-[#00a495] transition-all font-black text-sm tracking-tight" onclick="router('${t}')"><i class="fa-regular fa-file text-[#00a495] mr-2 opacity-50"></i>${t}</div>`).join('')}</div>`;
+// [수정] 전체 문서 목록 보기 (DB에서 확실하게 가져와서 나열)
+window.showAllDocuments = async () => {
+    // 1. 만약 문서 목록(allDocTitles)이 비어있다면 강제로 다시 불러옴
+    if (!allDocTitles || allDocTitles.length === 0) {
+        window.showToast("문서 목록을 동기화 중입니다...");
+        await loadAllTitles();
+    }
+
+    // 2. 상단 제목 변경
+    document.getElementById('docTitle').innerText = `전체 문서 보관소 (${allDocTitles.length})`;
+    document.getElementById('lastUpdated').innerText = "ARCHIVE INDEX";
+
+    // 3. 방해되는 UI 요소들 모두 숨기기 (깨끗한 목록을 위해)
+    const elementsToHide = [
+        'ai-summary-box', 'ai-tags-box', 'backlinks-section',
+        'floating-toc', 'link-preview'
+    ];
+    elementsToHide.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'none'; // 혹은 el.classList.add('hidden');
+    });
+    document.getElementById('ai-recs').classList.add('hidden');
+
+    // 4. 편집 모드 끄기
+    isEditing = false;
+    updateModeUI();
+
+    // 5. 목록 렌더링 (가나다순 정렬 + 아이콘 구분)
+    const listHtml = allDocTitles.sort((a, b) => a.localeCompare(b, 'ko')).map(title => {
+        // 문서 타입별 아이콘 설정
+        let icon = 'fa-file-lines';
+        let colorClass = 'text-[#00a495]'; // 기본 색상
+        let typeLabel = '문서';
+
+        if (title.startsWith('사진:')) {
+            icon = 'fa-image';
+            colorClass = 'text-orange-500';
+            typeLabel = '이미지';
+        } else if (title.startsWith('오디오:')) {
+            icon = 'fa-music';
+            colorClass = 'text-purple-500';
+            typeLabel = '오디오';
+        }
+
+        // 클릭 시 해당 문서로 이동 (router 호출)
+        return `
+            <div onclick="router('${title}')" class="group p-5 border rounded-2xl cursor-pointer bg-white dark:bg-[#1e1e1e] dark:border-[#333] hover:border-[#00a495] hover:shadow-lg transition-all transform hover:-translate-y-1">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-gray-50 dark:bg-white/5 flex items-center justify-center group-hover:bg-[#00a495]/10 transition-colors">
+                        <i class="fa-regular ${icon} ${colorClass} text-lg"></i>
+                    </div>
+                    <div class="overflow-hidden">
+                        <div class="font-bold text-gray-800 dark:text-gray-200 truncate w-full text-sm group-hover:text-[#00a495] transition-colors">${title}</div>
+                        <div class="text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-0.5">${typeLabel}</div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    // 6. 화면에 출력
+    const view = document.getElementById('viewMode');
+    if (allDocTitles.length === 0) {
+        view.innerHTML = `<div class="text-center py-20 text-gray-400">저장된 문서가 없습니다.</div>`;
+    } else {
+        view.innerHTML = `<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 animate-in fade-in zoom-in-95 duration-300">${listHtml}</div>`;
+    }
 };
 window.showToast = (m) => {
     const t = document.getElementById('toast');
@@ -596,25 +673,43 @@ window.initLinkPreview = () => {
 // [교체] DOM 기반 목차 생성 (이제 클릭하면 진짜로 이동함)
 window.generateFloatingTOC = () => {
     const tocContainer = document.getElementById('floating-toc');
+    const mobileTocContainer = document.getElementById('mobileTOCContent');
     const headers = document.querySelectorAll('#viewMode h1, #viewMode h2, #viewMode h3');
 
     if (headers.length < 2) {
         tocContainer.style.display = 'none';
+        if (mobileTocContainer) mobileTocContainer.innerHTML = '<p class="text-center text-gray-400 py-10">지정된 목차가 없습니다.</p>';
         return;
     }
 
     let tocHtml = `<div class="toc-title"><i class="fa-solid fa-list-ul"></i> 목차</div>`;
+    let mobileTocHtml = "";
 
     headers.forEach((h) => {
-        // 태그 이름(H1, H2..)에 따라 클래스 다르게 적용
         const level = h.tagName.toLowerCase();
         const title = h.innerText;
-        // 위에서 부여한 ID로 링크 연결
-        tocHtml += `<a href="#${h.id}" class="toc-${level}" onclick="event.preventDefault(); document.getElementById('${h.id}').scrollIntoView({behavior: 'smooth', block: 'center'});">${title}</a>`;
+        const link = `<a href="#${h.id}" class="toc-${level}" onclick="event.preventDefault(); document.getElementById('${h.id}').scrollIntoView({behavior: 'smooth', block: 'center'}); ${window.innerWidth <= 1280 ? 'toggleMobileTOC();' : ''}">${title}</a>`;
+        tocHtml += link;
+        mobileTocHtml += `<div class="py-2 border-b border-gray-100 dark:border-gray-800">${link}</div>`;
     });
 
     tocContainer.innerHTML = tocHtml;
-    tocContainer.style.display = 'block';
+    // [수정] 모바일/태블릿(1280px 이하)에선 데스크톱 목차를 절대 표시하지 않음 (JS 강제성 제거)
+    if (window.innerWidth > 1280) {
+        tocContainer.style.display = 'block';
+    } else {
+        tocContainer.style.display = 'none';
+    }
+    if (mobileTocContainer) mobileTocContainer.innerHTML = mobileTocHtml;
+};
+
+window.toggleMobileTOC = () => {
+    const modal = document.getElementById('mobileTOCModal');
+    if (modal.style.display === 'flex') {
+        modal.style.display = 'none';
+    } else {
+        modal.style.display = 'flex';
+    }
 };
 
 // 헤더 스크롤 헬퍼 (마크다운 렌더링 방식에 따라 h 태그 찾기)

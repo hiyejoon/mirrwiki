@@ -136,7 +136,7 @@
             display: none;
         }
 
-        /* AI 태그 박스 (3단계 준비) */
+        /* AI 태그 박스 */
         #ai-tags-box {
             margin-bottom: 1.5rem;
             display: none;
@@ -211,30 +211,7 @@
             transform: translateX(22px);
         }
 
-        @media (max-width: 768px) {
-            .sidebar {
-                display: none;
-            }
-        }
-
-        #scroll-top-btn {
-            position: fixed;
-            bottom: 30px;
-            right: 30px;
-            width: 50px;
-            height: 50px;
-            background: #00a495;
-            color: white;
-            border-radius: 50%;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 100;
-            cursor: pointer;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-        }
-
-        /* [추가] 링크 미리보기 팝업 */
+        /* 링크 미리보기 팝업 */
         .link-preview-popup {
             position: fixed;
             z-index: 1000;
@@ -269,30 +246,35 @@
             color: var(--text-main);
             display: -webkit-box;
             -webkit-line-clamp: 4;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
             margin: 0;
         }
 
-        /* [교체] Floating TOC (더 자연스러운 디자인) */
+        /* 플로팅 목차 (TOC) */
         .floating-toc {
             position: fixed;
-            /* 절대 위치 대신 고정 위치 사용 */
             top: 120px;
             right: 20px;
             width: 240px;
             max-height: calc(100vh - 150px);
             overflow-y: auto;
             background: rgba(255, 255, 255, 0.8);
-            /* 반투명 */
             backdrop-filter: blur(10px);
-            /* 유리 효과 */
             border: 1px solid var(--border-color);
             border-radius: 12px;
             padding: 15px;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
             display: none;
-            /* JS로 제어 */
             z-index: 50;
             transition: all 0.3s;
+        }
+
+        /* [수정] 모바일/태블릿에서 데스크톱 목차 절대 숨김 (가림 문제 근본 해결) */
+        @media (max-width: 1280px) {
+            .floating-toc {
+                display: none !important;
+            }
         }
 
         .dark-mode .floating-toc {
@@ -300,7 +282,6 @@
             border-color: #444;
         }
 
-        /* 목차 내부 링크 스타일 */
         .floating-toc .toc-title {
             font-weight: 800;
             margin-bottom: 10px;
@@ -346,14 +327,7 @@
             padding-left: 24px;
         }
 
-        /* 모바일에서는 숨김 */
-        @media (max-width: 1280px) {
-            .floating-toc {
-                display: none !important;
-            }
-        }
-
-        /* [추가] 문서 배지 및 역링크 */
+        /* 문서 배지 및 역링크 */
         .doc-badges {
             display: flex;
             gap: 8px;
@@ -402,7 +376,7 @@
             color: white;
         }
 
-        /* [추가] 집중 모드 스타일 */
+        /* 집중 모드 */
         body.zen-mode nav,
         body.zen-mode .sidebar,
         body.zen-mode #toolbarButtons,
@@ -412,9 +386,7 @@
 
         body.zen-mode main {
             grid-template-columns: 1fr;
-            /* 1컬럼으로 변경 */
             max-width: 800px;
-            /* 읽기 좋은 폭으로 제한 */
             margin: 0 auto;
         }
 
@@ -424,7 +396,6 @@
             background: transparent;
         }
 
-        /* 집중 모드 탈출 버튼 */
         #zen-exit-btn {
             position: fixed;
             bottom: 30px;
@@ -445,7 +416,7 @@
             display: block;
         }
 
-        /* [추가] 일일 퀘스트 위젯 */
+        /* 퀘스트 및 히트맵 */
         .quest-box {
             background: linear-gradient(135deg, #fff, #f0fdfa);
             border: 2px solid #00a495;
@@ -486,7 +457,6 @@
             transition: width 0.5s;
         }
 
-        /* [추가] 기여 히트맵 (잔디) */
         .heatmap-container {
             display: grid;
             grid-template-rows: repeat(7, 12px);
@@ -507,12 +477,10 @@
             background-color: #2d333b;
         }
 
-        /* 잔디 색상 단계 */
         .heatmap-level-1 {
             background-color: #9be9a8;
         }
 
-        /* 조금 기여 */
         .heatmap-level-2 {
             background-color: #40c463;
         }
@@ -525,12 +493,155 @@
             background-color: #216e39;
         }
 
-        /* 많이 기여 */
         .user-crown {
             color: gold;
             text-shadow: 0 0 5px rgba(255, 215, 0, 0.5);
             margin-left: 4px;
             display: none;
+        }
+
+        /* [수정] 기본적으로 숨김 (PC에서 나타나지 않도록) */
+        .mobile-bottom-nav {
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            .mobile-bottom-nav {
+                display: flex;
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                width: 100%;
+                border-top: 1px solid var(--border-color);
+                z-index: 100;
+                height: 65px;
+                align-items: center;
+                justify-content: space-around;
+                background: var(--bg-card);
+                padding-bottom: env(safe-area-inset-bottom);
+            }
+
+            .mobile-nav-item {
+                flex: 1;
+                text-align: center;
+                font-size: 0.65rem;
+                color: #888;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 4px;
+                cursor: pointer;
+            }
+
+            .mobile-nav-item i {
+                font-size: 1.1rem;
+            }
+
+            .mobile-nav-item.active {
+                color: var(--wiki-primary);
+                font-weight: bold;
+            }
+
+            /* 모바일 문서 뷰 여백 최적화 */
+            main {
+                padding-top: 4.5rem !important;
+                padding-bottom: 5rem !important;
+                padding-left: 0.75rem !important;
+                padding-right: 0.75rem !important;
+            }
+
+            .card {
+                border-radius: 12px;
+            }
+
+            #docTitle {
+                font-size: 1.8rem !important;
+                /* 조금 더 축소 */
+                line-height: 1.2;
+                margin-bottom: 0.5rem;
+            }
+
+            /* 모바일 헤더: 제목과 툴바를 세로로 배치하여 겹침 방지 */
+            header>div.flex {
+                flex-direction: column !important;
+                align-items: flex-start !important;
+            }
+
+            #toolbarButtons {
+                width: 100%;
+                justify-content: flex-start;
+                margin-top: 0.5rem;
+                flex-wrap: wrap;
+            }
+        }
+
+        /* 모바일용 플로팅 TOC 버튼 */
+        #mobile-toc-btn {
+            display: none;
+        }
+
+        @media (max-width: 1280px) {
+            #mobile-toc-btn {
+                display: flex;
+                position: fixed;
+                bottom: 85px;
+                right: 20px;
+                width: 45px;
+                height: 45px;
+                background: var(--wiki-primary);
+                color: white;
+                border-radius: 50%;
+                align-items: center;
+                justify-content: center;
+                z-index: 90;
+                cursor: pointer;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            }
+        }
+
+        /* TOC 모달 스타일 (모바일용) */
+        .mobile-toc-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 200;
+            display: none;
+            align-items: flex-end;
+        }
+
+        .mobile-toc-content {
+            background: var(--bg-card);
+            width: 100%;
+            max-height: 70vh;
+            border-top-left-radius: 20px;
+            border-top-right-radius: 20px;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        #scroll-top-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 50px;
+            height: 50px;
+            background: #00a495;
+            color: white;
+            border-radius: 50%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        @media (max-width: 768px) {
+            #scroll-top-btn {
+                bottom: 140px;
+                /* 바닥 바 위에 위치하도록 */
+                right: 15px;
+            }
         }
     </style>
 </head>
@@ -539,6 +650,8 @@
     <div id="progress-bar"></div>
     <div id="scroll-top-btn" onclick="window.scrollTo({top:0, behavior:'smooth'})"><i class="fa-solid fa-arrow-up"></i>
     </div>
+    <div id="mobile-toc-btn" onclick="toggleMobileTOC()"><i class="fa-solid fa-list-ul"></i></div>
+    <div id="zen-exit-btn" onclick="toggleZenMode()"><i class="fa-solid fa-compress"></i> 집중 모드 종료</div>
 
     <nav class="bg-[#00a495] text-white shadow-xl fixed w-full top-0 z-50 h-14 flex items-center justify-between px-4">
         <div class="flex items-center gap-3">
@@ -556,29 +669,86 @@
                 class="hidden absolute top-full left-0 w-full bg-white border shadow-2xl rounded-2xl mt-3 max-h-80 overflow-y-auto z-50 text-black text-sm p-3">
             </ul>
         </div>
+
+        <!-- [복구완료] 데스크톱 메뉴 버튼 -->
         <div class="hidden md:flex items-center gap-5 text-sm font-black">
             <div onclick="toggleDarkMode()" class="cursor-pointer transition-transform hover:scale-125"><i
                     class="fa-solid fa-circle-half-stroke" id="theme-icon"></i></div>
             <div onclick="openSettingsModal()" class="cursor-pointer hover:rotate-90 transition-transform"><i
                     class="fa-solid fa-gear"></i></div>
-            <a href="#" onclick="openGraphModal()" title="그래프"><i class="fa-solid fa-circle-nodes"></i></a>
-            <a href="#" onclick="showAllDocuments()" title="목록"><i class="fa-solid fa-list-ol"></i></a>
-            <a href="#" onclick="handleRandom()" title="랜덤"><i class="fa-solid fa-shuffle"></i></a>
+
+            <a href="#" onclick="openGraphModal()" title="지식 그래프"><i class="fa-solid fa-circle-nodes"></i></a>
+            <a href="#" onclick="showAllDocuments()" title="전체 목록"><i class="fa-solid fa-list-ol"></i></a>
+
+            <!-- 복구된 버튼들 -->
+            <a href="#" onclick="openNewDocModal()" title="새 문서 만들기"><i class="fa-solid fa-plus-circle"></i></a>
+            <a href="#" onclick="openImageUploadModal()" title="이미지 업로드"><i class="fa-solid fa-file-image"></i></a>
+            <a href="#" onclick="openAudioUploadModal()" title="오디오 업로드"><i class="fa-solid fa-file-audio"></i></a>
+
+            <a href="#" onclick="handleRandom()" title="무작위 탐험"><i class="fa-solid fa-shuffle"></i></a>
             <div id="desktopAuthSection"></div>
         </div>
+
         <button onclick="toggleMobileMenu()" class="md:hidden p-2 text-2xl"><i
                 class="fa-solid fa-bars-staggered"></i></button>
     </nav>
 
+    <!-- [복구완료] 모바일 메뉴 -->
     <div id="mobileMenu"
-        class="hidden fixed top-14 left-0 w-full bg-white shadow-2xl z-40 border-b md:hidden flex flex-col p-8 gap-8 text-gray-800 font-bold">
+        class="hidden fixed top-14 left-0 w-full bg-white shadow-2xl z-40 border-b md:hidden flex flex-col p-8 gap-6 text-gray-800 font-bold">
         <a href="#" onclick="openSettingsModal(); toggleMobileMenu()"><i
                 class="fa-solid fa-gear text-[#00a495] mr-2"></i> 개인 설정</a>
         <a href="#" onclick="openGraphModal(); toggleMobileMenu()"><i
                 class="fa-solid fa-circle-nodes text-[#00a495] mr-2"></i> 지식 그래프</a>
         <a href="#" onclick="showAllDocuments(); toggleMobileMenu()"><i
                 class="fa-solid fa-list-ol text-[#00a495] mr-2"></i> 전체 목록</a>
+
+        <!-- 복구된 모바일 메뉴 -->
+        <a href="#" onclick="openNewDocModal(); toggleMobileMenu()"><i
+                class="fa-solid fa-plus-circle text-[#00a495] mr-2"></i> 새 문서 만들기</a>
+        <a href="#" onclick="openImageUploadModal(); toggleMobileMenu()"><i
+                class="fa-solid fa-file-image text-[#00a495] mr-2"></i> 이미지 업로드</a>
+        <a href="#" onclick="openAudioUploadModal(); toggleMobileMenu()"><i
+                class="fa-solid fa-file-audio text-[#00a495] mr-2"></i> 오디오 업로드</a>
+        <a href="#" onclick="handleRandom(); toggleMobileMenu()"><i class="fa-solid fa-shuffle text-[#00a495] mr-2"></i>
+            무작위 탐험</a>
+
         <div id="mobileAuthItem" class="font-black text-[#00a495] border-t-2 pt-6 text-center"></div>
+    </div>
+
+    <!-- 모바일 하단 네비게이션 바 -->
+    <div class="mobile-bottom-nav">
+        <div class="mobile-nav-item active" onclick="router('FrontPage')">
+            <i class="fa-solid fa-house"></i>
+            <span>홈</span>
+        </div>
+        <div class="mobile-nav-item" onclick="document.getElementById('searchInput').focus()">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <span>검색</span>
+        </div>
+        <div class="mobile-nav-item" onclick="toggleEdit()">
+            <i class="fa-solid fa-pen-to-square"></i>
+            <span>편집</span>
+        </div>
+        <div class="mobile-nav-item" onclick="openHistoryModal()">
+            <i class="fa-solid fa-clock-rotate-left"></i>
+            <span>역사</span>
+        </div>
+        <div class="mobile-nav-item" onclick="toggleMobileMenu()">
+            <i class="fa-solid fa-ellipsis"></i>
+            <span>더보기</span>
+        </div>
+    </div>
+
+    <!-- 모바일 TOC 모달 -->
+    <div id="mobileTOCModal" class="mobile-toc-modal" onclick="toggleMobileTOC()">
+        <div class="mobile-toc-content" onclick="event.stopPropagation()">
+            <div class="flex justify-between items-center mb-4 border-b pb-2">
+                <h3 class="font-black text-lg text-[#00a495]"><i class="fa-solid fa-list-ul"></i> 목차</h3>
+                <button onclick="toggleMobileTOC()" class="text-xl">&times;</button>
+            </div>
+            <div id="mobileTOCContent"></div>
+        </div>
     </div>
 
     <main class="pt-24 pb-20 px-4 max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-10">
@@ -588,6 +758,7 @@
                     <h1 id="docTitle" class="text-4xl md:text-6xl font-black tracking-tighter break-all">로딩 중...</h1>
                     <div class="flex gap-2" id="toolbarButtons"></div>
                 </div>
+                <div id="doc-badges" class="doc-badges"></div>
                 <div class="flex items-center gap-4 text-xs text-gray-400 font-bold uppercase tracking-widest">
                     <span id="lastUpdated">...</span>
                     <span class="w-1 h-1 bg-gray-300 rounded-full"></span>
@@ -596,12 +767,9 @@
                             class="fa-solid fa-link mr-1"></i> 공유</button>
                 </div>
             </header>
-            <div id="doc-badges" class="doc-badges"></div>
 
-            <!-- AI 3단계: 자동 태그 (Step 3) -->
             <div id="ai-tags-box"></div>
 
-            <!-- AI 2단계: 핵심 요약 (Step 2) -->
             <section id="ai-summary-box">
                 <div class="flex items-center gap-2 mb-4">
                     <span class="bg-[#00a495] text-white text-[9px] px-2 py-0.5 rounded-full font-black">AI
@@ -613,15 +781,18 @@
             </section>
 
             <article id="viewMode" class="wiki-content break-words"></article>
+
+            <!-- 미리보기 팝업 및 목차 -->
             <div id="link-preview" class="link-preview-popup"></div>
             <div id="floating-toc" class="floating-toc"></div>
+
+            <!-- 역링크 -->
             <section id="backlinks-section" class="hidden">
                 <h4 class="font-bold text-sm mb-3 text-gray-400 uppercase tracking-widest"><i
-                        class="fa-solid fa-link"></i> Backlinks (이 문서를 언급함)</h4>
+                        class="fa-solid fa-link"></i> Backlinks (인용됨)</h4>
                 <div id="backlinks-list"></div>
             </section>
 
-            <!-- AI 1단계: 추천 (Step 1) -->
             <section id="ai-recs" class="hidden mt-24 border-t-2 pt-12 border-dashed border-gray-200">
                 <div class="font-black mb-8 flex items-center gap-3 text-xl tracking-tighter"><i
                         class="fa-solid fa-wand-magic-sparkles text-[#00a495]"></i> 함께 탐험할 지식들</div>
@@ -644,7 +815,7 @@
         </div>
 
         <aside class="sidebar md:col-span-1 space-y-10">
-            <!-- [추가] 사이드바 맨 위에 넣을 퀘스트 위젯 -->
+            <!-- 퀘스트 위젯 위치 -->
             <div id="daily-quest-widget" class="quest-box hidden">
                 <i class="fa-solid fa-scroll quest-badge text-[#00a495]"></i>
                 <h4 class="font-black text-sm text-[#00a495] uppercase mb-1">Daily Quest</h4>
@@ -704,7 +875,41 @@
         </div>
     </div>
 
-    <!-- 기존 모든 모달 (그래프, 인증, 역사, 업로드, 이동, 삭제) 포함 -->
+    <!-- [신규] 사용자 프로필 모달 (히트맵) -->
+    <div id="profileModal"
+        class="hidden fixed inset-0 bg-black/80 z-[250] flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="card p-8 rounded-[30px] shadow-2xl w-full max-w-2xl bg-white dark:bg-[#0d1117]">
+            <div class="flex justify-between items-center mb-6 border-b pb-4 dark:border-gray-700">
+                <div class="flex items-center gap-4">
+                    <div
+                        class="w-16 h-16 bg-[#00a495] rounded-full flex items-center justify-center text-2xl text-white font-black">
+                        <span id="profile-initial">U</span>
+                    </div>
+                    <div>
+                        <h3 id="profile-name" class="text-2xl font-black">User</h3>
+                        <p class="text-xs text-gray-500">Contribution Activity</p>
+                    </div>
+                </div>
+                <button onclick="document.getElementById('profileModal').classList.add('hidden')"
+                    class="text-2xl text-gray-400 hover:text-white">&times;</button>
+            </div>
+
+            <h4 class="text-xs font-bold text-gray-400 mb-2">LAST 365 DAYS</h4>
+            <div id="contribution-heatmap" class="heatmap-container"></div>
+
+            <div class="flex justify-end gap-2 items-center text-[10px] text-gray-400 mt-2">
+                <span>Less</span>
+                <div class="w-3 h-3 bg-[#ebedf0] dark:bg-[#2d333b] rounded"></div>
+                <div class="w-3 h-3 bg-[#9be9a8] rounded"></div>
+                <div class="w-3 h-3 bg-[#40c463] rounded"></div>
+                <div class="w-3 h-3 bg-[#30a14e] rounded"></div>
+                <div class="w-3 h-3 bg-[#216e39] rounded"></div>
+                <span>More</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 기존 모달들 -->
     <div id="graphModal"
         class="hidden fixed inset-0 bg-black/95 z-[150] flex items-center justify-center p-4 backdrop-blur-lg">
         <div
@@ -813,51 +1018,11 @@
         </div>
     </div>
 
-    <!-- [추가] 사용자 프로필 모달 (히트맵 포함) -->
-    <div id="profileModal"
-        class="hidden fixed inset-0 bg-black/80 z-[250] flex items-center justify-center p-4 backdrop-blur-sm">
-        <div class="card p-8 rounded-[30px] shadow-2xl w-full max-w-2xl bg-white dark:bg-[#0d1117]">
-            <div class="flex justify-between items-center mb-6 border-b pb-4 dark:border-gray-700">
-                <div class="flex items-center gap-4">
-                    <div
-                        class="w-16 h-16 bg-[#00a495] rounded-full flex items-center justify-center text-2xl text-white font-black">
-                        <span id="profile-initial">U</span>
-                    </div>
-                    <div>
-                        <h3 id="profile-name" class="text-2xl font-black">User</h3>
-                        <p class="text-xs text-gray-500">Contribution Activity</p>
-                    </div>
-                </div>
-                <button onclick="document.getElementById('profileModal').classList.add('hidden')"
-                    class="text-2xl text-gray-400 hover:text-white">&times;</button>
-            </div>
-
-            <!-- 잔디 심기 영역 -->
-            <h4 class="text-xs font-bold text-gray-400 mb-2">LAST 365 DAYS</h4>
-            <div id="contribution-heatmap" class="heatmap-container"></div>
-
-            <div class="flex justify-end gap-2 items-center text-[10px] text-gray-400 mt-2">
-                <span>Less</span>
-                <div class="w-3 h-3 bg-[#ebedf0] dark:bg-[#2d333b] rounded"></div>
-                <div class="w-3 h-3 bg-[#9be9a8] rounded"></div>
-                <div class="w-3 h-3 bg-[#40c463] rounded"></div>
-                <div class="w-3 h-3 bg-[#30a14e] rounded"></div>
-                <div class="w-3 h-3 bg-[#216e39] rounded"></div>
-                <span>More</span>
-            </div>
-        </div>
-    </div>
-
     <div id="fnPopover" class="fn-popover">
         <div id="fnPopoverContent"></div>
     </div>
     <div id="toast"
         class="fixed bottom-10 right-10 bg-gray-950 text-white px-10 py-5 rounded-2xl shadow-2xl transform translate-y-48 transition-transform duration-500 z-[300] border border-white/20 flex items-center gap-5 font-black text-sm italic tracking-widest">
-    </div>
-
-    <!-- 집중 모드 탈출 버튼 -->
-    <div id="zen-exit-btn" onclick="toggleZenMode()">
-        <i class="fa-solid fa-compress"></i> 집중 모드 종료
     </div>
 
     <script type="module" src="/script.js"></script>
